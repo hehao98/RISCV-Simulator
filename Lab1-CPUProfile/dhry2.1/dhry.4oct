@@ -1,0 +1,28 @@
+From decwrl!ihnp4!sfmin!lmg@ucbvax.Berkeley.EDU Sun Oct  4 11:33:19 1987
+Received: from ucbvax-spine.berkeley.edu by cca.ucsf.edu (5.51/GSC4.0)
+	id AA04326; Sun, 4 Oct 87 11:33:14 PDT
+Received: from decwrl.dec.com by ucbvax.Berkeley.EDU (5.58/1.27)
+	id AA28525; Sun, 4 Oct 87 11:34:41 PDT
+Received: by decwrl.dec.com (5.54.4/4.7.34)
+	id AA19437; Sun, 4 Oct 87 11:32:37 PDT
+Date: Sun, 4 Oct 87 11:32:37 PDT
+From: decwrl!ihnp4!sfmin!lmg@ucbvax.Berkeley.EDU
+Message-Id: <8710041832.AA19437@decwrl.dec.com>
+Received: by ihnp4.ATT.COM id AA06733; 4 Oct 87 09:41:41 CDT (Sun)
+To: root@cca
+Subject: Re:  386 Dhrystones
+Status: R
+
+While I don't have the numbers handy, I did (in the past) run Dhrystone
+with Turbo C under MS-DOS and with Microport's cc under System V/286.
+Turbo C gave about 3580 dhrystones, Microport about 3350. Reg/NoReg
+made little difference. I borrowed a recent load of the Intel 386 UNIX
+port from the folks down the hall who are certifying it, and ran dhrystone
+with that cc. Results were in the low 2000s, approximately a 40% drop
+from the 16 bit systems. The whole system felt noticably slower, too.
+All this was on a 16MHz Compaq 386 with 2M RAM.
+
+					Larry Geary
+					ihnp4!attunix!lmg
+
+

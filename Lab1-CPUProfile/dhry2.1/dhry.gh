@@ -1,0 +1,31 @@
+I refer you also to the Published Dhrystone figures on the net
+last month where both chips had figures reported using the
+Greenhills compilers; so the basic compiler technology is the same
+although the the 68020 version has been around longer so it is
+presumably more polished.
+
+Apple      Mac2       68020    15.67  2553  2570
+	MacOS 4.1,MPW/GreenHills C 1.8.0 none,
+Apple      Macintosh  68020 +  15.67     0  2674
+	MacIntosh System 4.1, Finder 5.5,MPW C (Green Hills C Compiler)
+	1.8.0 -q  optimize speed for space,32bit integers
+Apple      Mac2       68020    15.67  2654  2719
+	MacOS 4.1,MPW/GreenHills C 1.8.0 -q2,
+ISI        Optimum V  68020    16.00  3778  3977
+	UNIX 4.2BSD r3.05,Green Hills 1.8.0 ,
+Intel      386/24 sys 80386    16.00  6250  6250
+	UNIX System V.3 beta,greenhills cc v1.8.2C ,
+	386 Multibus I w/64KB cache
+Intel      386/20     80386    16.00  6995  6677
+	UNIX SVR3,Green Hills C-386 1.8.2E none,
+	-O means loop optimize, qed faster NOREG
+Intel      System 310 80386    16.00  7002  7132 UNIX V.3 (Beta),
+	Green Hills C 386 1.8.2E None,
+Intel      386/24 sys 80386    20.00  7810  7810
+	UNIX System V.3 beta,greenhills cc v1.8.2C ,
+	386 Multibus I w/64KB cache
+Convergent 200, Serve 80386    20.00  9419  9436
+	CTIX/386 SVR3,Greenhill gcc 1.8.2G none,
+	[Might Glbl Optimize-rer]
+Convergent Server PC  80386    20.00  9419  9436
+	Unix SVR3,Greenhill gcc 1.8.2G none,
