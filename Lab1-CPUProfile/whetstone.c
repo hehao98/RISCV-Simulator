@@ -82,6 +82,20 @@ void P3(double X, double Y, double *Z);
 double T,T1,T2,E1[5];
 int J,K,L;
 
+double sin11(double x) { return sin(x); }
+double cos11(double x) { return cos(x); }
+double atan11(double x) { return atan(x); }
+double log11(double x) { return log(x); }
+double exp11(double x) { return exp(x); }
+double sqrt11(double x) { return sqrt(x); }
+#define sin sin11
+#define cos cos11
+#define atan atan11
+#define log log11
+#define exp exp11
+#define sqrt sqrt11
+
+
 int
 main(int argc, char *argv[])
 {

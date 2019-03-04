@@ -348,6 +348,9 @@
  ***************************************************************************
  */
 
+char *strcpy11(char *dest, const char *src);
+int strcmp11(const char *s1, const char *s2);
+
 /* Compiler and system dependent definitions: */
 
 #ifndef TIME
@@ -367,6 +370,7 @@
 		/* Use Microsoft C hi-res clock */
 
 #ifdef TIMES
+#define HZ 60
 #include <sys/types.h>
 #include <sys/times.h>
                 /* for "times" */

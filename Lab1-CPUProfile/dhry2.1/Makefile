@@ -14,20 +14,20 @@
 #	For Microsoft C under DOS, you need a real make, not MSC make,
 #	to run this Makefile.  The public domain "ndmake" will suffice.
 #
-CC=		cl			# C compiler name goes here (MSC)
+# CC=		cl			# C compiler name goes here (MSC)
 CC=		cc			# C compiler name goes here (UNIX)
 
-PROGS=		msc			# Programs to build (MSC)
+# PROGS=		msc			# Programs to build (MSC)
 PROGS=		unix			# Programs to build (UNIX)
 
-TIME_FUNC=	-DMSC_CLOCK		# Use Microsoft clock() for measurement
-TIME_FUNC=	-DTIME			# Use time(2) for measurement
+# TIME_FUNC=	-DMSC_CLOCK		# Use Microsoft clock() for measurement
+# TIME_FUNC=	-DTIME			# Use time(2) for measurement
 TIME_FUNC=	-DTIMES			# Use times(2) for measurement
-HZ=		50			# Frequency of times(2) clock ticks
-HZ=		60			# Frequency of times(2) clock ticks
-HZ=		100			# Frequency of times(2) clock ticks
-HZ=		1			# Give bogus result unless changed!
-HZ=		60			# Frequency of times(2) clock ticks
+# HZ=		50			# Frequency of times(2) clock ticks
+# HZ=		60			# Frequency of times(2) clock ticks
+# HZ=		100			# Frequency of times(2) clock ticks
+# HZ=		1			# Give bogus result unless changed!
+# HZ=		60			# Frequency of times(2) clock ticks
 
 STRUCTASSIGN=				# Compiler can assign structs
 STRUCTASSIGN=	-DNOSTRUCTASSIGN	# Compiler cannot assign structs
