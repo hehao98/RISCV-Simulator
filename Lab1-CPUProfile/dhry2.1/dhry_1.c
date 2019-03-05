@@ -16,6 +16,7 @@
  */
 
 #include "dhry.h"
+#include <stdlib.h>
 
 /* Global Variables: */
 
@@ -69,6 +70,15 @@ float           Microseconds,
 
 /* end of variables for time measurement */
 
+void strcpy_rand(char *dest, const char *src)
+{
+	int len = strlen(src);
+	int cpylen = rand() % strlen;
+	strncpy(dest, buf, cpylen);
+}
+
+#define strcpy strcpy_rand
+// #define HZ 120
 
 main ()
 /*****/
