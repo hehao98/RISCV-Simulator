@@ -16,8 +16,6 @@
  */
 
 #include "dhry.h"
-#define strcpy strcpy11
-#define strcmp strcmp11
 
 #ifndef REG
 #define REG

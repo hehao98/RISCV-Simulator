@@ -100,10 +100,10 @@ int
 main(int argc, char *argv[])
 {
     /* used in the FORTRAN version */
-    long I;
-    long N1, N2, N3, N4, N6, N7, N8, N9, N10, N11;
+    long long I;
+    long long N1, N2, N3, N4, N6, N7, N8, N9, N10, N11;
     double X1,X2,X3,X4,X,Y,Z;
-    long LOOP;
+    long long LOOP;
     int II, JJ;
 
     /* added for this version */

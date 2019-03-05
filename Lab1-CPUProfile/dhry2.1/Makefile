@@ -27,7 +27,7 @@ TIME_FUNC=	-DTIMES			# Use times(2) for measurement
 # HZ=		60			# Frequency of times(2) clock ticks
 # HZ=		100			# Frequency of times(2) clock ticks
 # HZ=		1			# Give bogus result unless changed!
-# HZ=		60			# Frequency of times(2) clock ticks
+HZ=		60			# Frequency of times(2) clock ticks
 
 STRUCTASSIGN=				# Compiler can assign structs
 STRUCTASSIGN=	-DNOSTRUCTASSIGN	# Compiler cannot assign structs
@@ -35,7 +35,7 @@ STRUCTASSIGN=	-DNOSTRUCTASSIGN	# Compiler cannot assign structs
 ENUMS=					# Compiler does have enum type
 ENUMS=		-DNOENUMS		# Compiler doesn't have enum type
 
-OPTIMIZE=	-Ox -G2			# Optimization Level (MSC, 80286)
+# OPTIMIZE=	-Ox -G2			# Optimization Level (MSC, 80286)
 OPTIMIZE=	-O			# Optimization Level (generic UNIX)
 
 LFLAGS=					#Loader Flags
