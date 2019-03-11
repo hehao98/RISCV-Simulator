@@ -12,7 +12,7 @@
 
 1. 从GitHub上下载了`riscv-gnu-toolchains，`从中针对Linux平台配置并编译了`gcc`和`binutils`。
 2. 为了使用官方模拟器作为参照，从GitHub上下载、编译和安装了`riscv-qemu`。
-3. 为了能够处理模拟器与Host机器的通信，从GitHub上下载并安装了`riscv-fesvr`。
+3. 为了能够处理模拟器与Host机器的通信，从GitHub上下载并安装了`riscv-fesvr`和`riscv-isa-sim`。
 
 为了对RISC-V模拟器进行测试，编写了如下程序
 
