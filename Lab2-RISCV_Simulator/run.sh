@@ -4,13 +4,14 @@
 mkdir build
 
 echo "Building RISC-V ELFs..."
-riscv64-unknown-elf-gcc -Dmarch=rv64i test/arithmetic.c test/lib.c -o build/arithmetic.riscv
-riscv64-unknown-elf-gcc -Dmarch=rv64i test/helloworld.c test/lib.c -o build/helloworld.riscv
+riscv64-unknown-elf-gcc -Dmarch=rv64i test/arithmetic.c test/lib.c -o riscv-elf/arithmetic.riscv
+riscv64-unknown-elf-gcc -Dmarch=rv64i test/helloworld.c test/lib.c -o riscv-elf/helloworld.riscv
 
 echo "Automatically dumping ELFs for reference"
-cd build
+cd riscv-elf
 riscv64-unknown-elf-objdump -D arithmetic.riscv > arithmetic.s
 riscv64-unknown-elf-objdump -D helloworld.riscv > helloworld.s
+cd ..
 
 echo "Building the Simulator..."
 cmake ..

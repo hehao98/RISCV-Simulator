@@ -5,8 +5,14 @@
 
 #include <elfio/elfio.hpp>
 
-void dbgprintf(const char *format, ...);
+#include "MemoryManager.h"
+#include "Debug.h"
+
 void printElfInfo(ELFIO::elfio *reader);
+void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory);
+
+bool verbose = 1;
+MemoryManager memory;
 
 int main()
 {
@@ -16,23 +22,15 @@ int main()
     ELFIO::elfio reader;
     if (!reader.load(elfFile))
     {
-        dbgprintf("Fail to load ELF file %s!\n", elfFile);
+        fprintf(stderr, "Fail to load ELF file %s!\n", elfFile);
         return -1;
     }
 
     printElfInfo(&reader);
 
-    return 0;
-}
+    loadElfToMemory(&reader, &memory);
 
-void dbgprintf(const char *format, ...)
-{
-    char buf[BUFSIZ];
-    va_list args;
-    va_start(args, format);
-    vsprintf(buf, format, args);
-    fprintf(stderr, "%s", buf);
-    va_end(args);
+    return 0;
 }
 
 void printElfInfo(ELFIO::elfio *reader)
@@ -82,6 +80,17 @@ void printElfInfo(ELFIO::elfio *reader)
                pseg->get_virtual_address(), pseg->get_file_size(),
                pseg->get_memory_size());
     }
-
     printf("===================================\n");
+}
+
+void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory)
+{
+    ELFIO::Elf_Half seg_num = reader->segments.size();
+    for (int i = 0; i < seg_num; ++i) {
+        const ELFIO::segment *pseg = reader->segments[i];
+        for (unsigned j = 0; j < pseg->get_file_size(); ++j) {
+            uint32_t addr = pseg->get_virtual_address() + j
+            //if (memory->isPageExist(pseg->get_virtual_address()))
+        }
+    }
 }
