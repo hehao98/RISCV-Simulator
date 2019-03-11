@@ -24,30 +24,33 @@ int main() {
     }
   }
 
-  printf("The content of A is: \n");
+  print_s("The content of A is: \n");
   for (int i = 0; i < M; ++i) {
     for (int j = 0; j < M; ++j) {
-      printf("%d ", A[i][j]);
+      print_d(A[i][j]);
+      print_s(" ");
     }
-    printf("\n");
+    print_s("\n");
   }
 
-  printf("The content of B is: \n");
+  print_s("The content of B is: \n");
   for (int i = 0; i < M; ++i) {
     for (int j = 0; j < M; ++j) {
-      printf("%d ", B[i][j]);
+      print_d(B[i][j]);
+      print_s(" ");
     }
-    printf("\n");
+    print_s("\n");
   }
 
   matmulti(A, B, C, M);
 
-  printf("The content of C=A*B is: \n");
+  print_s("The content of C=A*B is: \n");
   for (int i = 0; i < M; ++i) {
     for (int j = 0; j < M; ++j) {
-      printf("%d ", C[i][j]);
+      print_d(C[i][j]);
+      print_s(" ");
     }
-    printf("\n");
+    print_s("\n");
   }
 
   return 0;
