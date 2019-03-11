@@ -5,8 +5,8 @@
 
 #include <elfio/elfio.hpp>
 
-#include "MemoryManager.h"
 #include "Debug.h"
+#include "MemoryManager.h"
 
 void printElfInfo(ELFIO::elfio *reader);
 void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory);
@@ -16,7 +16,7 @@ MemoryManager memory;
 
 int main()
 {
-    const char *elfFile = "helloworld.riscv";
+    const char *elfFile = "../riscv-elf/helloworld.riscv";
 
     // Read ELF file
     ELFIO::elfio reader;
@@ -29,6 +29,8 @@ int main()
     printElfInfo(&reader);
 
     loadElfToMemory(&reader, &memory);
+
+    memory.printInfo();
 
     return 0;
 }
@@ -76,7 +78,7 @@ void printElfInfo(ELFIO::elfio *reader)
     for (int i = 0; i < seg_num; ++i)
     {
         const ELFIO::segment *pseg = reader->segments[i];
-        printf("[%d]\t0x%x\t0x%lx\t0x%ld\t0x%ld\n", i, pseg->get_flags(),
+        printf("[%d]\t0x%x\t0x%lx\t%ld\t%ld\n", i, pseg->get_flags(),
                pseg->get_virtual_address(), pseg->get_file_size(),
                pseg->get_memory_size());
     }
@@ -86,11 +88,15 @@ void printElfInfo(ELFIO::elfio *reader)
 void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory)
 {
     ELFIO::Elf_Half seg_num = reader->segments.size();
-    for (int i = 0; i < seg_num; ++i) {
+    for (int i = 0; i < seg_num; ++i)
+    {
         const ELFIO::segment *pseg = reader->segments[i];
-        for (unsigned j = 0; j < pseg->get_file_size(); ++j) {
-            uint32_t addr = pseg->get_virtual_address() + j
-            //if (memory->isPageExist(pseg->get_virtual_address()))
+
+        if (!memory->isPageExist(pseg->get_virtual_address()))
+        {
+            memory->addPage(pseg->get_virtual_address());
         }
+        uint32_t addr = (uint32_t)pseg->get_virtual_address();
+        memory->copyFrom(pseg->get_data(), addr, pseg->get_file_size());
     }
 }

@@ -16,7 +16,7 @@ public:
     bool addPage(uint32_t addr);
     bool isPageExist(uint32_t addr);
 
-    bool copyFrom(void *src, uint32_t dest, uint32_t len);
+    bool copyFrom(const void *src, uint32_t dest, uint32_t len);
 
     bool setByte(uint32_t addr, uint8_t val);
     uint8_t getByte(uint32_t addr);
