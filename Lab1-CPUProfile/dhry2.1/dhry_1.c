@@ -16,7 +16,6 @@
  */
 
 #include "dhry.h"
-#include <stdlib.h>
 
 /* Global Variables: */
 
@@ -73,8 +72,8 @@ float           Microseconds,
 void strcpy_rand(char *dest, const char *src)
 {
 	int len = strlen(src);
-	int cpylen = rand() % strlen;
-	strncpy(dest, buf, cpylen);
+	int cpylen = rand() % len;
+	strncpy(dest, src, cpylen);
 }
 
 #define strcpy strcpy_rand
