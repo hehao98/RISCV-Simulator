@@ -10,14 +10,13 @@
 
 首先，必须搭建RISC-V相关的编译、运行和测试环境。为了简便起见，本次实验全部基于RISC-V 64。为了配置环境，执行了如下步骤。
 
-1. 从GitHub上下载了`riscv-gnu-toolchains，`从中针对Linux平台配置并编译了`gcc`和`binutils`。
+1. 从GitHub上下载了`riscv-tools，`从中针对Linux平台配置，编译和安装了`gcc`、`binutils`、`riscv-fesvr`和`riscv-isa-sim`。
 2. 为了使用官方模拟器作为参照，从GitHub上下载、编译和安装了`riscv-qemu`。
-3. 为了能够处理模拟器与Host机器的通信，从GitHub上下载并安装了`riscv-fesvr`和`riscv-isa-sim`。
 
-为了对RISC-V模拟器进行测试，编写了如下程序
+为了对RISC-V模拟器进行测试，编写了如下程序（见`test/`文件夹）
 
 ```
-printf.c
+lib.c
 helloworld.c
 quicksort.c
 matrixmulti.c
@@ -53,3 +52,6 @@ ackermann.c
 #### 5.1 额外的功能或性能特性，更优化的设计等
 
 #### 5.2 意见和建议
+
+1. RISC-V工具链文档缺失的问题非常严重
+2. 计算机体系结构正课教的是MIPS，不知道为什么Lab却要做RISC-V，增加了学习成本和完成Lab的时间
