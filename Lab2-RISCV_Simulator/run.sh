@@ -12,6 +12,10 @@ cd build
 riscv64-unknown-elf-objdump -D arithmetic.riscv > arithmetic.s
 riscv64-unknown-elf-objdump -D helloworld.riscv > helloworld.s
 
-# echo "Building the Simulator"
-# cmake ..
-# make
+echo "Building the Simulator..."
+cmake ..
+make
+
+echo "==========Start Exceuting the Simulator=========="
+./Simulator
+
