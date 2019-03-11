@@ -1,9 +1,8 @@
-#ifndef LIB_H
-#define LIB_H
+#ifndef RISCV_SIMULATOR_LIB_H
+#define RISCV_SIMULATOR_LIB_H
 
-#include <stdarg.h>
-
-void printf(char *str, ...);
-void *malloc(int size);
+void print_d(int num);
+void print_s(const char *str);
+void print_c(char ch);
 
 #endif

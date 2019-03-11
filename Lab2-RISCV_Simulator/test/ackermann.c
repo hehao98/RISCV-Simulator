@@ -12,6 +12,8 @@ int ackermann(int m, int n) {
 
 int main() {
   int result = ackermann(4, 1);
-  printf("Akermann(4, 1) = %d\n", result);
+  print_s("Akermann(4, 1) = ");
+  print_d(result);
+  print_s("\n");
   return 0;
 }
