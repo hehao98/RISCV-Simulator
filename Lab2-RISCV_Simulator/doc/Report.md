@@ -6,12 +6,30 @@
 
 ### 一、实验环境
 
+#### 1.1 实验环境的安装与配置
+
 本次实验的环境为Ubuntu 16.04，模拟器使用的编程语言为C++ 11，构建环境为CMake。
 
-首先，必须搭建RISC-V相关的编译、运行和测试环境。为了简便起见，本次实验全部基于RISC-V 64。为了配置环境，执行了如下步骤。
+首先，必须搭建RISC-V相关的编译、运行和测试环境。简便起见，本次实验全部基于RISC-V 64I指令集，为了配置环境，执行了如下步骤。
 
-1. 从GitHub上下载了`riscv-tools，`从中针对Linux平台配置，编译和安装了`gcc`、`binutils`、`riscv-fesvr`和`riscv-isa-sim`。
+1. 从GitHub上下载了`riscv-tools，`从中针对Linux平台配置，编译和安装了`riscv-gnu-toolchain`。
 2. 为了使用官方模拟器作为参照，从GitHub上下载、编译和安装了`riscv-qemu`。
+
+需要特别注意的是，在编译`riscv-gnu-toolchain`时，必须指定工具链和C语言标准库所使用的指令集为RV64I，否则在编译的时候编译器会使用RV64C、RV64D等扩展指令集。即使设置编译器编译时只使用`RV64I`指令集，编译器也会链接进使用扩展指令集的标准库函数。因此，为了获得只使用RV64I标准指令集的ELF程序，必须在`riscv-gnu-toolchain`中采用如下选项重新编译
+
+```
+mkdir build; cd build
+../configure --with-arch=rv64i --prefix=/path/to/riscv64i
+make -j$(nproc)
+```
+
+
+并在编译时，使用`-march=rv64i`让编译器针对RV64I标准指令集生成ELF程序。
+```
+riscv64-unknown-elf-gcc -march=rv64i test/arithmetic.c test/lib.c -o riscv-elf/arithmetic.riscv
+```
+
+#### 1.2 使用的测试程序
 
 为了对RISC-V模拟器进行测试，编写了如下程序（见`test/`文件夹）
 

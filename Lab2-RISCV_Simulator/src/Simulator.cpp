@@ -3,6 +3,43 @@
 #include "Debug.h"
 #include "Simulator.h"
 
+namespace RISCV {
+const char *REGNAME[32] = {
+    "zero", // x0
+    "ra",   // x1
+    "sp",   // x2
+    "gp",   // x3
+    "tp",   // x4
+    "t0",   // x5
+    "t1",   // x6
+    "t2",   // x7
+    "s0",   // x8
+    "s1",   // x9
+    "a0",   // x10
+    "a1",   // x11
+    "a2",   // x12
+    "a3",   // x13
+    "a4",   // x14
+    "a5",   // x15
+    "a6",   // x16
+    "a7",   // x17
+    "s2",   // x18
+    "s3",   // x19
+    "s4",   // x20
+    "s5",   // x21
+    "s6",   // x22
+    "s7",   // x23
+    "s8",   // x24
+    "s9",   // x25
+    "s10",  // x26
+    "s11",  // x27
+    "t3",   // x28
+    "t4",   // x29
+    "t5",   // x30
+    "t6",   // x31
+};
+}
+
 using namespace RISCV;
 
 Simulator::Simulator(MemoryManager *memory) {
@@ -50,9 +87,9 @@ void Simulator::fetch() {
 
   if (this->verbose) {
     if (len == 2) {
-      printf("Fetched instruction 0x%.4x at addr 0x%x\n", inst, this->pc);
+      printf("Fetched instruction 0x%.4x at address 0x%x\n", inst, this->pc);
     } else {
-      printf("Fetched instruction 0x%.8x at addr 0x%x\n", inst, this->pc);
+      printf("Fetched instruction 0x%.8x at address 0x%x\n", inst, this->pc);
     }
   }
 
@@ -73,7 +110,7 @@ void Simulator::decode() {
   if (this->fReg.len == 4) // 32 bit instruction
   {
     uint32_t opcode = inst & 0x7F;
-    uint32_t funct3 = (inst >> 12) & 0x3;
+    uint32_t funct3 = (inst >> 12) & 0x7;
     uint32_t funct7 = (inst >> 25) & 0x7F;
     uint32_t rd = (inst >> 7) & 0x1F;
     uint32_t rs1 = (inst >> 15) & 0x1F;
@@ -172,7 +209,7 @@ void Simulator::decode() {
       op1str = REGNAME[rs1];
       op2str = REGNAME[rs2];
       deststr = REGNAME[rd];
-      inststr = inststr + " " + deststr + "," + op1str + "," + op2str;
+      inststr = instname + " " + deststr + "," + op1str + "," + op2str;
       break;
     case OP_IMM:
       op1 = this->reg[rs1];
@@ -199,6 +236,7 @@ void Simulator::decode() {
         break;
       case FUNCT3_SLLI:
         instname = "slli";
+        op2 = op2 & 0x3F;
         break;
       case FUNCT3_SRLI_SRAI:
         if (((inst >> 26) & 0x3F) == 0) {
@@ -249,7 +287,7 @@ void Simulator::decode() {
       op1 = this->reg[rs1];
       op2 = imm_i;
       dest = rd;
-      instname = "jal";
+      instname = "jalr";
       op1str = REGNAME[rs1];
       op2str = std::to_string(op2);
       deststr = REGNAME[dest];
@@ -271,6 +309,12 @@ void Simulator::decode() {
         break;
       case 0x5:
         instname = "bge";
+        break;
+      case 0x6:
+        instname = "bltu";
+        break;
+      case 0x7:
+        instname = "bgtu";
         break;
       default:
         dbgprintf("Unknown funct3 0x%x at OP_BRANCH\n", funct3);
@@ -324,6 +368,12 @@ void Simulator::decode() {
       case 0x3:
         instname = "ld";
         break;
+      case 0x4:
+        instname = "lbu";
+        break;
+      case 0x5:
+        instname = "lhu";
+        break;
       default:
         dbgprintf("Unknown funct3 0x%x for OP_LOAD\n", funct3);
         exit(-1);
@@ -347,7 +397,14 @@ void Simulator::decode() {
       op1 = this->reg[rs1];
       op2 = imm_i;
       dest = rd;
-      instname = "addiw";
+      switch(funct3) {
+        case 0x0:
+          instname = "addiw";
+          break;
+        default:
+          dbgprintf("Unknown funct3 0x%x for OP_ADDIW\n", funct3);
+          exit(-1);
+      }
       op1str = REGNAME[rs1];
       op2str = std::to_string(op2);
       deststr = REGNAME[rd];
@@ -361,10 +418,9 @@ void Simulator::decode() {
       printf("Decoded instruction 0x%.8x as %s\n", inst, inststr.c_str());
     }
   } else { // 16 bit instruction
-    
-    if (verbose) {
-      printf("Decoded instruction 0x%.4x as %s\n", inst, inststr.c_str());
-    }
+    dbgprintf(
+        "Current implementation does not support 16bit RV64C instructions!\n");
+    exit(-1);
   }
 
   this->dReg.dest = dest;
