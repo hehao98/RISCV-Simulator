@@ -91,12 +91,25 @@ void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory)
     for (int i = 0; i < seg_num; ++i)
     {
         const ELFIO::segment *pseg = reader->segments[i];
-
-        if (!memory->isPageExist(pseg->get_virtual_address()))
-        {
-            memory->addPage(pseg->get_virtual_address());
-        }
+        uint32_t filesz = pseg->get_file_size();
+        uint32_t memsz = pseg->get_memory_size();
         uint32_t addr = (uint32_t)pseg->get_virtual_address();
-        memory->copyFrom(pseg->get_data(), addr, pseg->get_file_size());
+
+        for (uint32_t p = addr; p < addr + memsz; ++p)
+        {
+            if (!memory->isPageExist(p))
+            {
+                memory->addPage(p);
+            }
+
+            if (p < addr + filesz)
+            {
+                memory->setByte(p, pseg->get_data()[p - addr]);
+            }
+            else
+            {
+                memory->setByte(p, 0);
+            }
+        }
     }
 }
