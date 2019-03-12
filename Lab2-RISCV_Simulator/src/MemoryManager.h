@@ -1,15 +1,14 @@
 #ifndef MEMORY_MANAGER_H
 #define MEMORY_MANAGER_H
 
-#include <cstdio>
 #include <cstdint>
+#include <cstdio>
 
 #include <elfio/elfio.hpp>
 
-
-class MemoryManager 
+class MemoryManager
 {
-public:
+  public:
     MemoryManager();
     ~MemoryManager();
 
@@ -31,7 +30,8 @@ public:
     uint64_t getLong(uint32_t addr);
 
     void printInfo();
-private:
+
+  private:
     uint32_t getFirstEntryId(uint32_t addr);
     uint32_t getSecondEntryId(uint32_t addr);
     uint32_t getPageOffset(uint32_t addr);

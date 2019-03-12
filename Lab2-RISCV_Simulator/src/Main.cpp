@@ -7,12 +7,15 @@
 
 #include "Debug.h"
 #include "MemoryManager.h"
+#include "Simulator.h"
 
 void printElfInfo(ELFIO::elfio *reader);
 void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory);
 
 bool verbose = 1;
+bool isSingleStep = 1;
 MemoryManager memory;
+Simulator simulator(&memory);
 
 int main()
 {
@@ -26,11 +29,22 @@ int main()
         return -1;
     }
 
-    printElfInfo(&reader);
+    if (verbose)
+    {
+        printElfInfo(&reader);
+    }
 
     loadElfToMemory(&reader, &memory);
 
-    memory.printInfo();
+    if (verbose)
+    {
+        memory.printInfo();
+    }
+
+    simulator.isSingleStep = isSingleStep;
+    simulator.verbose = verbose;
+    simulator.pc = reader.get_entry();
+    simulator.simulate();
 
     return 0;
 }
@@ -91,6 +105,18 @@ void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory)
     for (int i = 0; i < seg_num; ++i)
     {
         const ELFIO::segment *pseg = reader->segments[i];
+
+        uint64_t fullmemsz = pseg->get_memory_size();
+        uint64_t fulladdr = pseg->get_virtual_address();
+        // Our 32bit simulator cannot handle this
+        if (fulladdr + fullmemsz > 0xFFFFFFFF)
+        {
+            dbgprintf(
+                "ELF address space larger than 32bit! Seg %d has max addr of 0x%lx\n",
+                i, fulladdr + fullmemsz);
+            exit(-1);
+        }
+
         uint32_t filesz = pseg->get_file_size();
         uint32_t memsz = pseg->get_memory_size();
         uint32_t addr = (uint32_t)pseg->get_virtual_address();

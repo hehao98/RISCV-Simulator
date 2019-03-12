@@ -1,8 +1,8 @@
 #ifndef SIMULATOR_DEBUG_H
 #define SIMULATOR_DEBUG_H
 
-#include <cstdio>
 #include <cstdarg>
+#include <cstdio>
 
 #define DEBUG
 
@@ -19,4 +19,3 @@ inline void dbgprintf(const char *format, ...)
 }
 
 #endif
-
