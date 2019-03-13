@@ -4,6 +4,7 @@
 #include "Simulator.h"
 
 namespace RISCV {
+
 const char *REGNAME[32] = {
     "zero", // x0
     "ra",   // x1
@@ -38,6 +39,55 @@ const char *REGNAME[32] = {
     "t5",   // x30
     "t6",   // x31
 };
+
+const char *INSTNAME[] {
+    "lui",
+    "auipc",
+    "jal",
+    "jalr",
+    "beq",
+    "bne",
+    "blt",
+    "bge",
+    "bltu",
+    "bgeu",
+    "lb",
+    "lh",
+    "lw",
+    "ld",
+    "lbu",
+    "lhu",
+    "sb",
+    "sh",
+    "sw",
+    "sd",
+    "addi",
+    "slti",
+    "sltiu",
+    "xori",
+    "ori",
+    "andi",
+    "slli",
+    "srli",
+    "srai",
+    "add",
+    "sub",
+    "sll",
+    "slt",
+    "sltu",
+    "xor",
+    "srl",
+    "sra",
+    "or",
+    "and",
+    "ecall",
+    "addiw",
+    "mul",
+    "mulh",
+    "div",
+    "rem",
+};
+
 }
 
 using namespace RISCV;
@@ -102,9 +152,10 @@ void Simulator::decode() {
   std::string instname = "";
   std::string inststr = "";
   std::string deststr, op1str, op2str, offsetstr;
+  Inst insttype = Inst::UNKNOWN;
   uint32_t inst = this->fReg.inst;
-  int32_t op1, op2, offset; // op1, op2 and offset are values
-  int32_t dest;             // dest is reg id
+  int64_t op1, op2, offset; // op1, op2 and offset are values
+  int64_t dest;             // dest is reg id
 
   // Reg for 32bit instructions
   if (this->fReg.len == 4) // 32 bit instruction
@@ -137,10 +188,13 @@ void Simulator::decode() {
       case 0x0: // add, mul, sub
         if (funct7 == 0x00) {
           instname = "add";
+          insttype = ADD;
         } else if (funct7 == 0x01) {
           instname = "mul";
+          insttype = MUL;
         } else if (funct7 == 0x20) {
           instname = "sub";
+          insttype = SUB;
         } else {
           dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
@@ -149,8 +203,10 @@ void Simulator::decode() {
       case 0x1: // sll, mulh
         if (funct7 == 0x00) {
           instname = "sll";
+          insttype = SLL;
         } else if (funct7 == 0x01) {
           instname = "mulh";
+          insttype = MULH;
         } else {
           dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
@@ -159,6 +215,7 @@ void Simulator::decode() {
       case 0x2: // slt
         if (funct7 == 0x00) {
           instname = "slt";
+          insttype = SLT;
         } else {
           dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
@@ -167,8 +224,10 @@ void Simulator::decode() {
       case 0x4: // xor div
         if (funct7 == 0x00) {
           instname = "xor";
+          insttype = XOR;
         } else if (funct7 == 0x01) {
           instname = "div";
+          insttype = DIV;
         } else {
           dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
@@ -177,8 +236,10 @@ void Simulator::decode() {
       case 0x5: // srl, sra
         if (funct7 == 0x00) {
           instname = "srl";
+          insttype = SRL;
         } else if (funct7 == 0x20) {
           instname = "sra";
+          insttype = SRA;
         } else {
           dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
@@ -187,8 +248,10 @@ void Simulator::decode() {
       case 0x6: // or, rem
         if (funct7 == 0x00) {
           instname = "or";
+          insttype = OR;
         } else if (funct7 == 0x01) {
           instname = "rem";
+          insttype = REM;
         } else {
           dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
@@ -197,6 +260,7 @@ void Simulator::decode() {
       case 0x7: // and
         if (funct7 == 0x00) {
           instname = "and";
+          insttype = AND;
         } else {
           dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
@@ -216,35 +280,47 @@ void Simulator::decode() {
       op2 = imm_i;
       dest = rd;
       switch (funct3) {
-      case FUNCT3_ADDI:
+      case 0x0:
         instname = "addi";
+        insttype = ADDI;
         break;
-      case FUNCT3_SLTI:
+      case 0x2:
         instname = "slti";
+        insttype = SLTI;
         break;
-      case FUNCT3_SLTIU:
+      case 0x3:
         instname = "sltiu";
+        insttype = SLTIU;
         break;
-      case FUNCT3_XORI:
+      case 0x4:
         instname = "xori";
+        insttype = XORI;
         break;
-      case FUNCT3_ORI:
+      case 0x6:
         instname = "ori";
+        insttype = ORI;
         break;
-      case FUNCT3_ANDI:
+      case 0x7:
         instname = "andi";
+        insttype = ANDI;
         break;
-      case FUNCT3_SLLI:
+      case 0x1:
         instname = "slli";
+        insttype = SLLI;
         op2 = op2 & 0x3F;
         break;
-      case FUNCT3_SRLI_SRAI:
-        if (((inst >> 26) & 0x3F) == 0) {
+      case 0x5:
+        if (((inst >> 26) & 0x3F) == 0x0) {
           instname = "srli";
+          insttype = SRLI;
+          op2 = op2 & 0x3F;
+        } else if (((inst >> 26) & 0x3F) == 0x10) {
+          instname = "srai";
+          insttype = SRAI;
           op2 = op2 & 0x3F;
         } else {
-          instname = "srai";
-          op2 = op2 & 0x3F;
+          dbgprintf("Unknown funct7 0x%x for OP_IMM\n", (inst >> 26) & 0x3F);
+          exit(-1);
         }
         break;
       default:
@@ -261,6 +337,7 @@ void Simulator::decode() {
       op2 = 0;
       dest = rd;
       instname = "lui";
+      insttype = LUI;
       op1str = std::to_string(imm_u);
       deststr = REGNAME[dest];
       inststr = instname + " " + deststr + "," + op1str;
@@ -270,6 +347,7 @@ void Simulator::decode() {
       op2 = 0;
       dest = rd;
       instname = "auipc";
+      insttype = AUIPC;
       op1str = std::to_string(imm_u);
       deststr = REGNAME[dest];
       inststr = instname + " " + deststr + "," + op1str;
@@ -279,6 +357,7 @@ void Simulator::decode() {
       op2 = 0;
       dest = rd;
       instname = "jal";
+      insttype = JAL;
       op1str = std::to_string(imm_uj);
       deststr = REGNAME[dest];
       inststr = instname + " " + deststr + "," + op1str;
@@ -288,6 +367,7 @@ void Simulator::decode() {
       op2 = imm_i;
       dest = rd;
       instname = "jalr";
+      insttype = JALR;
       op1str = REGNAME[rs1];
       op2str = std::to_string(op2);
       deststr = REGNAME[dest];
@@ -300,21 +380,27 @@ void Simulator::decode() {
       switch (funct3) {
       case 0x0:
         instname = "beq";
+        insttype = BEQ;
         break;
       case 0x1:
         instname = "bne";
+        insttype = BNE;
         break;
       case 0x4:
         instname = "blt";
+        insttype = BLT;
         break;
       case 0x5:
         instname = "bge";
+        insttype = BGE;
         break;
       case 0x6:
         instname = "bltu";
+        insttype = BLTU;
         break;
       case 0x7:
-        instname = "bgtu";
+        instname = "bgeu";
+        insttype = BGEU;
         break;
       default:
         dbgprintf("Unknown funct3 0x%x at OP_BRANCH\n", funct3);
@@ -332,15 +418,19 @@ void Simulator::decode() {
       switch (funct3) {
       case 0x0:
         instname = "sb";
+        insttype = SB;
         break;
       case 0x1:
         instname = "sh";
+        insttype = SH;
         break;
       case 0x2:
         instname = "sw";
+        insttype = SW;
         break;
       case 0x3:
         instname = "sd";
+        insttype = SD;
         break;
       default:
         dbgprintf("Unknown funct3 0x%x for OP_STORE\n", funct3);
@@ -358,21 +448,27 @@ void Simulator::decode() {
       switch (funct3) {
       case 0x0:
         instname = "lb";
+        insttype = LB;
         break;
       case 0x1:
         instname = "lh";
+        insttype = LH;
         break;
       case 0x2:
         instname = "lw";
+        insttype = LW;
         break;
       case 0x3:
         instname = "ld";
+        insttype = LD;
         break;
       case 0x4:
         instname = "lbu";
+        insttype = LBU;
         break;
       case 0x5:
         instname = "lhu";
+        insttype = LHU;
         break;
       default:
         dbgprintf("Unknown funct3 0x%x for OP_LOAD\n", funct3);
@@ -387,6 +483,7 @@ void Simulator::decode() {
       op1 = this->reg[10];
       if (funct3 == 0x0 && funct7 == 0x000) {
         instname = "ecall";
+        insttype = ECALL;
       } else {
         dbgprintf("Unknown OP_SYSTEM inst with funct3 0x%x and funct7 0x%x\n",
                   funct3, funct7);
@@ -397,13 +494,14 @@ void Simulator::decode() {
       op1 = this->reg[rs1];
       op2 = imm_i;
       dest = rd;
-      switch(funct3) {
-        case 0x0:
-          instname = "addiw";
-          break;
-        default:
-          dbgprintf("Unknown funct3 0x%x for OP_ADDIW\n", funct3);
-          exit(-1);
+      switch (funct3) {
+      case 0x0:
+        instname = "addiw";
+        insttype = ADDIW;
+        break;
+      default:
+        dbgprintf("Unknown funct3 0x%x for OP_ADDIW\n", funct3);
+        exit(-1);
       }
       op1str = REGNAME[rs1];
       op2str = std::to_string(op2);
@@ -423,13 +521,27 @@ void Simulator::decode() {
     exit(-1);
   }
 
+  if (instname != INSTNAME[insttype]) {
+    dbgprintf("Unmatch instname %s with insttype %d\n", instname.c_str(), insttype);
+    exit(-1);
+  }
+
+  this->dReg.inst = insttype;
   this->dReg.dest = dest;
   this->dReg.op1 = op1;
   this->dReg.op2 = op2;
   this->dReg.offset = offset;
 }
 
-void Simulator::excecute() {}
+void Simulator::excecute() {
+  Inst inst = this->dReg.inst;
+  int64_t dest = this->dReg.dest;
+  int64_t op1 = this->dReg.op1;
+  int64_t op2 = this->dReg.op2;
+  int64_t offset = this->dReg.offset;
+
+  
+}
 
 void Simulator::memoryAccess() {}
 
