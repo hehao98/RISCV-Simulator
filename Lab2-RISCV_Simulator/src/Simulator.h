@@ -10,6 +10,41 @@ namespace RISCV {
 
 const int REGNUM = 32;
 extern const char *REGNAME[32];
+typedef uint32_t RegId;
+enum Reg {
+    REG_ZERO = 0,
+    REG_RA = 1,
+    REG_SP = 2,
+    REG_GP = 3,
+    REG_TP = 4,
+    REG_T0 = 5,
+    REG_T1 = 6,
+    REG_T2 = 7,
+    REG_S0 = 8,
+    REG_S1 = 9,
+    REG_A0 = 10,
+    REG_A1 = 11,
+    REG_A2 = 12,
+    REG_A3 = 13,
+    REG_A4 = 14,
+    REG_A5 = 15,
+    REG_A6 = 16,
+    REG_A7 = 17,
+    REG_S2 = 18,
+    REG_S3 = 19,
+    REG_S4 = 20,
+    REG_S5 = 21,
+    REG_S6 = 22,
+    REG_S7 = 23,
+    REG_S8 = 24,
+    REG_S9 = 25,
+    REG_S10 = 26,
+    REG_S11 = 27,
+    REG_T3 = 28,
+    REG_T4 = 29,
+    REG_T5 = 30,
+    REG_T6 = 31,
+};
 
 enum InstType {
   R_TYPE,
@@ -19,7 +54,6 @@ enum InstType {
   U_TYPE,
   UJ_TYPE,
 };
-
 enum Inst {
     LUI = 0,
     AUIPC = 1,
@@ -66,9 +100,9 @@ enum Inst {
     MULH = 42,
     DIV = 43,
     REM = 44,
+    LWU = 45,
     UNKNOWN = -1,
 };
-
 extern const char *INSTNAME[];
 
 // Opcode field
@@ -100,21 +134,32 @@ public:
 
 private:
   struct FReg {
+    uint64_t pc;
     uint32_t inst;
     uint32_t len;
   } fReg;
   struct DReg {
+    uint64_t pc;
     RISCV::Inst inst;
     int64_t op1;
     int64_t op2;
-    int64_t dest;
+    RegId dest;
     int64_t offset;
   } dReg;
   struct EReg {
-    
+    uint64_t pc;
+    int64_t op2;
+    bool writeReg;
+    RegId destReg;
+    int64_t out;
+    bool writeMem;
+    bool readMem;
+    bool readSignExt;
+    uint32_t memLen;
+    bool branch;
   } eReg;
   struct MReg {
-
+    uint64_t pc;
   } mReg;
 
   void fetch();
@@ -122,6 +167,9 @@ private:
   void excecute();
   void memoryAccess();
   void writeBack();
+
+  void handleSystemCall();
+  void printInfo();
 };
 
 #endif

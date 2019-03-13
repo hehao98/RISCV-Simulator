@@ -40,55 +40,16 @@ const char *REGNAME[32] = {
     "t6",   // x31
 };
 
-const char *INSTNAME[] {
-    "lui",
-    "auipc",
-    "jal",
-    "jalr",
-    "beq",
-    "bne",
-    "blt",
-    "bge",
-    "bltu",
-    "bgeu",
-    "lb",
-    "lh",
-    "lw",
-    "ld",
-    "lbu",
-    "lhu",
-    "sb",
-    "sh",
-    "sw",
-    "sd",
-    "addi",
-    "slti",
-    "sltiu",
-    "xori",
-    "ori",
-    "andi",
-    "slli",
-    "srli",
-    "srai",
-    "add",
-    "sub",
-    "sll",
-    "slt",
-    "sltu",
-    "xor",
-    "srl",
-    "sra",
-    "or",
-    "and",
-    "ecall",
-    "addiw",
-    "mul",
-    "mulh",
-    "div",
-    "rem",
+const char *INSTNAME[]{
+    "lui",   "auipc", "jal",  "jalr", "beq",  "bne",  "blt",   "bge",
+    "bltu",  "bgeu",  "lb",   "lh",   "lw",   "ld",   "lbu",   "lhu",
+    "sb",    "sh",    "sw",   "sd",   "addi", "slti", "sltiu", "xori",
+    "ori",   "andi",  "slli", "srli", "srai", "add",  "sub",   "sll",
+    "slt",   "sltu",  "xor",  "srl",  "sra",  "or",   "and",   "ecall",
+    "addiw", "mul",   "mulh", "div",  "rem",  "lwu",
 };
 
-}
+} // namespace RISCV
 
 using namespace RISCV;
 
@@ -104,6 +65,11 @@ Simulator::~Simulator() {}
 
 void Simulator::simulate() {
   while (true) {
+    if (this->reg[0] != 0) {
+      dbgprintf("Register 0's value is not zero!\n");
+      exit(-1);
+    }
+
     this->fetch();
     this->decode();
     this->excecute();
@@ -120,8 +86,8 @@ void Simulator::simulate() {
 
 void Simulator::fetch() {
   if (this->pc % 2 != 0) {
-    dbgprintf("Illegal PC at 0x%x!\n", this->pc);
-    exit(0);
+    dbgprintf("Illegal PC 0x%x!\n", this->pc);
+    exit(-1);
   }
 
   uint32_t inst = this->memory->getInt(this->pc);
@@ -145,6 +111,7 @@ void Simulator::fetch() {
 
   this->fReg.inst = inst;
   this->fReg.len = len;
+  this->fReg.pc = this->pc;
   this->pc = this->pc + len;
 }
 
@@ -155,7 +122,7 @@ void Simulator::decode() {
   Inst insttype = Inst::UNKNOWN;
   uint32_t inst = this->fReg.inst;
   int64_t op1, op2, offset; // op1, op2 and offset are values
-  int64_t dest;             // dest is reg id
+  RegId dest;               // dest is reg id
 
   // Reg for 32bit instructions
   if (this->fReg.len == 4) // 32 bit instruction
@@ -163,9 +130,9 @@ void Simulator::decode() {
     uint32_t opcode = inst & 0x7F;
     uint32_t funct3 = (inst >> 12) & 0x7;
     uint32_t funct7 = (inst >> 25) & 0x7F;
-    uint32_t rd = (inst >> 7) & 0x1F;
-    uint32_t rs1 = (inst >> 15) & 0x1F;
-    uint32_t rs2 = (inst >> 20) & 0x1F;
+    RegId rd = (inst >> 7) & 0x1F;
+    RegId rs1 = (inst >> 15) & 0x1F;
+    RegId rs2 = (inst >> 20) & 0x1F;
     int32_t imm_i = int32_t(inst) >> 20;
     int32_t imm_s =
         int32_t(((inst >> 7) & 0x1F) | ((inst >> 20) & 0xFE0)) << 20 >> 20;
@@ -335,6 +302,7 @@ void Simulator::decode() {
     case OP_LUI:
       op1 = imm_u;
       op2 = 0;
+      offset = imm_u;
       dest = rd;
       instname = "lui";
       insttype = LUI;
@@ -345,6 +313,7 @@ void Simulator::decode() {
     case OP_AUIPC:
       op1 = imm_u;
       op2 = 0;
+      offset = imm_u;
       dest = rd;
       instname = "auipc";
       insttype = AUIPC;
@@ -355,6 +324,7 @@ void Simulator::decode() {
     case OP_JAL:
       op1 = imm_uj;
       op2 = 0;
+      offset = imm_uj;
       dest = rd;
       instname = "jal";
       insttype = JAL;
@@ -444,6 +414,7 @@ void Simulator::decode() {
     case OP_LOAD:
       op1 = this->reg[rs1];
       op2 = imm_i;
+      offset = imm_i;
       dest = rd;
       switch (funct3) {
       case 0x0:
@@ -470,6 +441,9 @@ void Simulator::decode() {
         instname = "lhu";
         insttype = LHU;
         break;
+      case 0x6:
+        instname = "lwu";
+        insttype = LWU;
       default:
         dbgprintf("Unknown funct3 0x%x for OP_LOAD\n", funct3);
         exit(-1);
@@ -522,10 +496,12 @@ void Simulator::decode() {
   }
 
   if (instname != INSTNAME[insttype]) {
-    dbgprintf("Unmatch instname %s with insttype %d\n", instname.c_str(), insttype);
+    dbgprintf("Unmatch instname %s with insttype %d\n", instname.c_str(),
+              insttype);
     exit(-1);
   }
 
+  this->dReg.pc = this->fReg.pc;
   this->dReg.inst = insttype;
   this->dReg.dest = dest;
   this->dReg.op1 = op1;
@@ -535,14 +511,243 @@ void Simulator::decode() {
 
 void Simulator::excecute() {
   Inst inst = this->dReg.inst;
-  int64_t dest = this->dReg.dest;
   int64_t op1 = this->dReg.op1;
   int64_t op2 = this->dReg.op2;
   int64_t offset = this->dReg.offset;
 
-  
+  uint64_t dRegPC = this->dReg.pc;
+  bool writeReg = false;
+  RegId destReg = this->dReg.dest;
+  int64_t out = 0;
+  bool writeMem = false;
+  bool readMem = false;
+  bool readSignExt = false;
+  uint32_t memLen = 0;
+  bool branch = false;
+
+  switch (inst) {
+  case LUI:
+    writeReg = true;
+    out = offset << 12;
+    break;
+  case AUIPC:
+    writeReg = true;
+    out = dRegPC + (offset << 12);
+    break;
+  case JAL:
+    writeReg = true;
+    out = dRegPC + 4;
+    dRegPC = dRegPC + op1;
+    break;
+  case JALR:
+    writeReg = true;
+    out = dRegPC + 4;
+    break;
+  case BEQ:
+    if (op1 == op2) {
+      branch = true;
+    }
+    break;
+  case BNE:
+    if (op1 != op2) {
+      branch = true;
+    }
+    break;
+  case BLT:
+    if (op1 < op2) {
+      branch = true;
+    }
+    break;
+  case BGE:
+    if (op1 >= op2) {
+      branch = true;
+    }
+    break;
+  case BLTU:
+    if ((uint64_t)op1 < (uint64_t)op2) {
+      branch = true;
+    }
+    break;
+  case BGEU:
+    if ((uint64_t)op1 >= (uint64_t)op2) {
+      branch = true;
+    }
+    break;
+  case LB:
+    readMem = true;
+    writeReg = true;
+    memLen = 1;
+    out = op1 + offset;
+    readSignExt = true;
+    break;
+  case LH:
+    readMem = true;
+    writeReg = true;
+    memLen = 2;
+    out = op1 + offset;
+    readSignExt = true;
+    break;
+  case LW:
+    readMem = true;
+    writeReg = true;
+    memLen = 4;
+    out = op1 + offset;
+    readSignExt = true;
+    break;
+  case LD:
+    readMem = true;
+    writeReg = true;
+    memLen = 8;
+    out = op1 + offset;
+    readSignExt = true;
+    break;
+  case LBU:
+    readMem = true;
+    writeReg = true;
+    memLen = 1;
+    out = op1 + offset;
+    break;
+  case LHU:
+    readMem = true;
+    writeReg = true;
+    memLen = 2;
+    out = op1 + offset;
+    break;
+  case LWU:
+    readMem = true;
+    writeReg = true;
+    memLen = 4;
+    out = op1 + offset;
+    break;
+  case SB:
+    writeMem = true;
+    memLen = 1;
+    out = op1 + offset;
+    op2 = op2 & 0xFF;
+    break;
+  case SH:
+    writeMem = true;
+    memLen = 2;
+    out = op1 + offset;
+    op2 = op2 & 0xFFFF;
+    break;
+  case SW:
+    writeMem = true;
+    memLen = 4;
+    out = op1 + offset;
+    op2 = op2 & 0xFFFFFFFF;
+    break;
+  case SD:
+    writeMem = true;
+    memLen = 8;
+    out = op1 + offset;
+    break;
+  case ADDI:
+  case ADD:
+    writeReg = true;
+    out = op1 + op2;
+    break;
+  case SUB:
+    writeReg = true;
+    out = op1 - op2;
+    break;
+  case MUL:
+    writeReg = true;
+    out = op1 * op2;
+    break;
+  case DIV:
+    writeReg = true;
+    out = op1 / op2;
+    break;
+  case SLTI:
+  case SLT:
+    writeReg = true;
+    out = op1 < op2 ? 1 : 0;
+    break;
+  case SLTIU:
+  case SLTU:
+    writeReg = true;
+    out = (uint64_t)op1 < (uint64_t)op2 ? 1 : 0;
+    break;
+  case XORI:
+  case XOR:
+    writeReg = true;
+    out = op1 ^ op2;
+    break;
+  case ORI:
+  case OR:
+    writeReg = true;
+    out = op1 | op2;
+    break;
+  case ANDI:
+  case AND:
+    writeReg = true;
+    out = op1 & op2;
+    break;
+  case SLLI:
+  case SLL:
+    writeReg = true;
+    out = op1 << op2;
+    break;
+  case SRLI:
+  case SRL:
+    writeReg = true;
+    out = (uint64_t)op1 >> (uint64_t)op2;
+    break;
+  case SRAI:
+  case SRA:
+    writeReg = true;
+    out = op1 >> op2;
+    break;
+  case ECALL:
+    handleSystemCall();
+    break;
+  default:
+    dbgprintf("Unknown instruction type %d\n", inst);
+    exit(-1);
+  }
+
+  this->eReg.pc = dRegPC;
+  this->eReg.writeReg = writeReg;
+  this->eReg.destReg = destReg;
+  this->eReg.op2 = op2;
+  this->eReg.out = out;
+  this->eReg.writeMem = writeMem;
+  this->eReg.readMem = readMem;
+  this->eReg.readSignExt=readSignExt;
+  this->eReg.memLen = memLen;
+  this->eReg.branch = branch;
 }
 
 void Simulator::memoryAccess() {}
 
 void Simulator::writeBack() {}
+
+void Simulator::handleSystemCall() {
+  uint32_t type = this->reg[REG_A7];
+  uint32_t arg1 = this->reg[REG_A0];
+  uint32_t arg2 = this->reg[REG_A1];
+  switch (type) {
+  case 0: // print string
+    uint32_t addr = arg1;
+    char ch = this->memory->getByte(addr);
+    while (ch != '\0') {
+      printf("%c", ch);
+      ch = this->memory->getByte(addr);
+    }
+    break;
+  case 1: // print char
+    printf("%c", arg1);
+    break;
+  case 2: // print num
+    printf("%d", (int32_t)arg1);
+    break;
+  default:
+    dbgprintf("Unknown syscall type %d\n", type);
+    exit(-1);
+  }
+}
+
+void Simulator::printInfo() {
+
+}
