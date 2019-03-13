@@ -546,31 +546,37 @@ void Simulator::excecute() {
   case BEQ:
     if (op1 == op2) {
       branch = true;
+      dRegPC = dRegPC + offset;
     }
     break;
   case BNE:
     if (op1 != op2) {
       branch = true;
+      dRegPC = dRegPC + offset;
     }
     break;
   case BLT:
     if (op1 < op2) {
       branch = true;
+      dRegPC = dRegPC + offset;
     }
     break;
   case BGE:
     if (op1 >= op2) {
       branch = true;
+      dRegPC = dRegPC + offset;
     }
     break;
   case BLTU:
     if ((uint64_t)op1 < (uint64_t)op2) {
       branch = true;
+      dRegPC = dRegPC + offset;
     }
     break;
   case BGEU:
     if ((uint64_t)op1 >= (uint64_t)op2) {
       branch = true;
+      dRegPC = dRegPC + offset;
     }
     break;
   case LB:
@@ -710,7 +716,7 @@ void Simulator::excecute() {
   this->eReg.pc = dRegPC;
   this->eReg.writeReg = writeReg;
   this->eReg.destReg = destReg;
-  this->eReg.op2 = op2;
+  this->eReg.op2 = op2; // for store
   this->eReg.out = out;
   this->eReg.writeMem = writeMem;
   this->eReg.readMem = readMem;
@@ -719,9 +725,86 @@ void Simulator::excecute() {
   this->eReg.branch = branch;
 }
 
-void Simulator::memoryAccess() {}
+void Simulator::memoryAccess() {
+  bool writeReg = this->eReg.writeReg;
+  RegId destReg = this->eReg.destReg;
+  int64_t op2 = this->eReg.op2; // for store
+  int64_t out = this->eReg.out;
+  bool writeMem = this->eReg.writeMem;
+  bool readMem = this->eReg.readMem;
+  bool readSignExt = this->eReg.readSignExt;
+  uint32_t memLen = this->eReg.memLen;
+  bool branch = this->eReg.branch;
 
-void Simulator::writeBack() {}
+  if (writeMem) {
+    switch (memLen) {
+      case 1:
+        this->memory->setByte(out, op2);
+        break;
+      case 2:
+        this->memory->setShort(out, op2);
+        break;
+      case 4:
+        this->memory->setInt(out, op2);
+        break;
+      case 8:
+        this->memory->setLong(out, op2);
+        break;
+      default:
+        dbgprintf("Unknown memLen %d\n", memLen);
+        exit(-1);
+    }
+  }
+  
+  if (readMem) {
+    switch (memLen) {
+      case 1:
+        if (readSignExt) {
+          out = (int64_t)this->memory->getByte(out);
+        } else {
+          out = (uint64_t)this->memory->getByte(out);
+        }
+        break;
+      case 2:
+        if (readSignExt) {
+          out = (int64_t)this->memory->getShort(out);
+        } else {
+          out = (uint64_t)this->memory->getShort(out);
+        }
+        break;
+      case 4:
+        if (readSignExt) {
+          out = (int64_t)this->memory->getInt(out);
+        } else {
+          out = (uint64_t)this->memory->getInt(out);
+        }
+        break;
+      case 8:
+        if (readSignExt) {
+          out = (int64_t)this->memory->getLong(out);
+        } else {
+          out = (uint64_t)this->memory->getLong(out);
+        }
+        break;
+      default:
+        dbgprintf("Unknown memLen %d\n", memLen);
+        exit(-1);
+    }
+  }
+
+  this->mReg.pc = this->eReg.pc;
+  this->mReg.destReg = this->eReg.destReg;
+  this->mReg.writeReg = this->eReg.writeReg;
+  this->mReg.out = this->eReg.out;
+}
+
+void Simulator::writeBack() {
+  if (this->mReg.writeReg) {
+    this->reg[this->mReg.destReg] = this->mReg.out;
+  }
+
+  this->pc = this->mReg.pc;
+}
 
 void Simulator::handleSystemCall() {
   uint32_t type = this->reg[REG_A7];

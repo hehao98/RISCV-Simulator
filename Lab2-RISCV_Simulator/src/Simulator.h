@@ -160,6 +160,9 @@ private:
   } eReg;
   struct MReg {
     uint64_t pc;
+    int64_t out;
+    bool writeReg;
+    RegId destReg;
   } mReg;
 
   void fetch();
