@@ -1,9 +1,12 @@
 #include <string>
+#include <sstream>
+#include <fstream>
 
 #include "Debug.h"
 #include "Simulator.h"
 
-namespace RISCV {
+namespace RISCV
+{
 
 const char *REGNAME[32] = {
     "zero", // x0
@@ -41,32 +44,100 @@ const char *REGNAME[32] = {
 };
 
 const char *INSTNAME[]{
-    "lui",   "auipc", "jal",  "jalr", "beq",  "bne",  "blt",   "bge",
-    "bltu",  "bgeu",  "lb",   "lh",   "lw",   "ld",   "lbu",   "lhu",
-    "sb",    "sh",    "sw",   "sd",   "addi", "slti", "sltiu", "xori",
-    "ori",   "andi",  "slli", "srli", "srai", "add",  "sub",   "sll",
-    "slt",   "sltu",  "xor",  "srl",  "sra",  "or",   "and",   "ecall",
-    "addiw", "mul",   "mulh", "div",  "rem",  "lwu",
+    "lui",
+    "auipc",
+    "jal",
+    "jalr",
+    "beq",
+    "bne",
+    "blt",
+    "bge",
+    "bltu",
+    "bgeu",
+    "lb",
+    "lh",
+    "lw",
+    "ld",
+    "lbu",
+    "lhu",
+    "sb",
+    "sh",
+    "sw",
+    "sd",
+    "addi",
+    "slti",
+    "sltiu",
+    "xori",
+    "ori",
+    "andi",
+    "slli",
+    "srli",
+    "srai",
+    "add",
+    "sub",
+    "sll",
+    "slt",
+    "sltu",
+    "xor",
+    "srl",
+    "sra",
+    "or",
+    "and",
+    "ecall",
+    "addiw",
+    "mul",
+    "mulh",
+    "div",
+    "rem",
+    "lwu",
 };
 
 } // namespace RISCV
 
 using namespace RISCV;
 
-Simulator::Simulator(MemoryManager *memory) {
+Simulator::Simulator(MemoryManager *memory)
+{
   this->memory = memory;
   this->pc = 0;
-  for (int i = 0; i < REGNUM; ++i) {
+  for (int i = 0; i < REGNUM; ++i)
+  {
     this->reg[i] = 0;
   }
 }
 
 Simulator::~Simulator() {}
 
-void Simulator::simulate() {
-  while (true) {
-    if (this->reg[0] != 0) {
-      dbgprintf("Register 0's value is not zero!\n");
+void Simulator::initStack(uint32_t baseaddr, uint32_t maxSize)
+{
+  this->reg[REG_SP] = baseaddr;
+  this->stackBase = baseaddr;
+  this->maximumStackSize = maxSize;
+  for (uint32_t addr = baseaddr; addr > baseaddr - maxSize; addr--)
+  {
+    if (!this->memory->isPageExist(addr))
+    {
+      this->memory->addPage(addr);
+    }
+    this->memory->setByte(addr, 0);
+  }
+}
+
+void Simulator::simulate()
+{
+  while (true)
+  {
+    if (this->reg[0] != 0)
+    {
+      // Some instruction might set this register to zero
+      this->reg[0] = 0;
+      //this->panic("Register 0's value is not zero!\n");
+      //exit(-1);
+    }
+
+    if (this->reg[REG_SP] < this->stackBase - this->maximumStackSize)
+    {
+      this->panic("Stack Overflow!\n");
       exit(-1);
     }
 
@@ -76,17 +147,26 @@ void Simulator::simulate() {
     this->memoryAccess();
     this->writeBack();
 
-    if (this->isSingleStep) {
-      char cmd;
+    this->history.regRecord.push_back(this->getRegInfoStr());
+
+    if (verbose)
+    {
+      this->printInfo();
+    }
+
+    if (this->isSingleStep)
+    {
       printf("Press ENTER to continue: ");
       getchar();
     }
   }
 }
 
-void Simulator::fetch() {
-  if (this->pc % 2 != 0) {
-    dbgprintf("Illegal PC 0x%x!\n", this->pc);
+void Simulator::fetch()
+{
+  if (this->pc % 2 != 0)
+  {
+    this->panic("Illegal PC 0x%x!\n", this->pc);
     exit(-1);
   }
 
@@ -94,18 +174,25 @@ void Simulator::fetch() {
   uint32_t len = 0;
 
   // Determine instrucion length
-  if ((inst & 0x3) == 0x3) { // Normal 32 bit instructions
+  if ((inst & 0x3) == 0x3)
+  { // Normal 32 bit instructions
     len = 4;
-  } else { // Compressed 16 bit instructions
+  }
+  else
+  { // Compressed 16 bit instructions
     len = 2;
     inst = inst & 0xFFFF;
   }
 
-  if (this->verbose) {
-    if (len == 2) {
-      printf("Fetched instruction 0x%.4x at address 0x%x\n", inst, this->pc);
-    } else {
-      printf("Fetched instruction 0x%.8x at address 0x%x\n", inst, this->pc);
+  if (this->verbose)
+  {
+    if (len == 2)
+    {
+      printf("Fetched instruction 0x%.4x at address 0x%llx\n", inst, this->pc);
+    }
+    else
+    {
+      printf("Fetched instruction 0x%.8x at address 0x%llx\n", inst, this->pc);
     }
   }
 
@@ -115,14 +202,15 @@ void Simulator::fetch() {
   this->pc = this->pc + len;
 }
 
-void Simulator::decode() {
+void Simulator::decode()
+{
   std::string instname = "";
   std::string inststr = "";
   std::string deststr, op1str, op2str, offsetstr;
   Inst insttype = Inst::UNKNOWN;
   uint32_t inst = this->fReg.inst;
-  int64_t op1, op2, offset; // op1, op2 and offset are values
-  RegId dest;               // dest is reg id
+  int64_t op1 = 0, op2 = 0, offset = 0; // op1, op2 and offset are values
+  RegId dest = 0;                       // dest is reg id
 
   // Reg for 32bit instructions
   if (this->fReg.len == 4) // 32 bit instruction
@@ -137,104 +225,139 @@ void Simulator::decode() {
     int32_t imm_s =
         int32_t(((inst >> 7) & 0x1F) | ((inst >> 20) & 0xFE0)) << 20 >> 20;
     int32_t imm_sb = int32_t(((inst >> 7) & 0x1E) | ((inst >> 20) & 0x7E0) |
-                             ((inst << 7) & 0x800) | ((inst >> 19) & 0x1000))
+                             ((inst << 4) & 0x800) | ((inst >> 19) & 0x1000))
                          << 19 >>
                      19;
     int32_t imm_u = int32_t(inst) >> 12;
     int32_t imm_uj = int32_t(((inst >> 21) & 0x3FF) | ((inst >> 10) & 0x400) |
-                             (inst & 0xFF000) | ((inst >> 12) & 0x80000))
+                             ((inst >> 1) & 0x7F800) | ((inst >> 12) & 0x80000))
                          << 12 >>
                      11;
 
-    switch (opcode) {
+    switch (opcode)
+    {
     case OP_REG:
       op1 = this->reg[rs1];
       op2 = this->reg[rs2];
       dest = rd;
-      switch (funct3) {
+      switch (funct3)
+      {
       case 0x0: // add, mul, sub
-        if (funct7 == 0x00) {
+        if (funct7 == 0x00)
+        {
           instname = "add";
           insttype = ADD;
-        } else if (funct7 == 0x01) {
+        }
+        else if (funct7 == 0x01)
+        {
           instname = "mul";
           insttype = MUL;
-        } else if (funct7 == 0x20) {
+        }
+        else if (funct7 == 0x20)
+        {
           instname = "sub";
           insttype = SUB;
-        } else {
-          dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
+        }
+        else
+        {
+          this->panic("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
         }
         break;
       case 0x1: // sll, mulh
-        if (funct7 == 0x00) {
+        if (funct7 == 0x00)
+        {
           instname = "sll";
           insttype = SLL;
-        } else if (funct7 == 0x01) {
+        }
+        else if (funct7 == 0x01)
+        {
           instname = "mulh";
           insttype = MULH;
-        } else {
-          dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
+        }
+        else
+        {
+          this->panic("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
         }
         break;
       case 0x2: // slt
-        if (funct7 == 0x00) {
+        if (funct7 == 0x00)
+        {
           instname = "slt";
           insttype = SLT;
-        } else {
-          dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
+        }
+        else
+        {
+          this->panic("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
         }
         break;
       case 0x4: // xor div
-        if (funct7 == 0x00) {
+        if (funct7 == 0x00)
+        {
           instname = "xor";
           insttype = XOR;
-        } else if (funct7 == 0x01) {
+        }
+        else if (funct7 == 0x01)
+        {
           instname = "div";
           insttype = DIV;
-        } else {
-          dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
+        }
+        else
+        {
+          this->panic("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
         }
         break;
       case 0x5: // srl, sra
-        if (funct7 == 0x00) {
+        if (funct7 == 0x00)
+        {
           instname = "srl";
           insttype = SRL;
-        } else if (funct7 == 0x20) {
+        }
+        else if (funct7 == 0x20)
+        {
           instname = "sra";
           insttype = SRA;
-        } else {
-          dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
+        }
+        else
+        {
+          this->panic("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
         }
         break;
       case 0x6: // or, rem
-        if (funct7 == 0x00) {
+        if (funct7 == 0x00)
+        {
           instname = "or";
           insttype = OR;
-        } else if (funct7 == 0x01) {
+        }
+        else if (funct7 == 0x01)
+        {
           instname = "rem";
           insttype = REM;
-        } else {
-          dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
+        }
+        else
+        {
+          this->panic("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
         }
         break;
       case 0x7: // and
-        if (funct7 == 0x00) {
+        if (funct7 == 0x00)
+        {
           instname = "and";
           insttype = AND;
-        } else {
-          dbgprintf("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
+        }
+        else
+        {
+          this->panic("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
           exit(-1);
         }
         break;
       default:
-        dbgprintf("Unknown Funct3 field %x\n", funct3);
+        this->panic("Unknown Funct3 field %x\n", funct3);
         exit(-1);
       }
       op1str = REGNAME[rs1];
@@ -246,7 +369,8 @@ void Simulator::decode() {
       op1 = this->reg[rs1];
       op2 = imm_i;
       dest = rd;
-      switch (funct3) {
+      switch (funct3)
+      {
       case 0x0:
         instname = "addi";
         insttype = ADDI;
@@ -277,21 +401,26 @@ void Simulator::decode() {
         op2 = op2 & 0x3F;
         break;
       case 0x5:
-        if (((inst >> 26) & 0x3F) == 0x0) {
+        if (((inst >> 26) & 0x3F) == 0x0)
+        {
           instname = "srli";
           insttype = SRLI;
           op2 = op2 & 0x3F;
-        } else if (((inst >> 26) & 0x3F) == 0x10) {
+        }
+        else if (((inst >> 26) & 0x3F) == 0x10)
+        {
           instname = "srai";
           insttype = SRAI;
           op2 = op2 & 0x3F;
-        } else {
-          dbgprintf("Unknown funct7 0x%x for OP_IMM\n", (inst >> 26) & 0x3F);
+        }
+        else
+        {
+          this->panic("Unknown funct7 0x%x for OP_IMM\n", (inst >> 26) & 0x3F);
           exit(-1);
         }
         break;
       default:
-        dbgprintf("Unknown Funct3 field %x\n", funct3);
+        this->panic("Unknown Funct3 field %x\n", funct3);
         exit(-1);
       }
       op1str = REGNAME[rs1];
@@ -347,7 +476,8 @@ void Simulator::decode() {
       op1 = this->reg[rs1];
       op2 = this->reg[rs2];
       offset = imm_sb;
-      switch (funct3) {
+      switch (funct3)
+      {
       case 0x0:
         instname = "beq";
         insttype = BEQ;
@@ -373,7 +503,7 @@ void Simulator::decode() {
         insttype = BGEU;
         break;
       default:
-        dbgprintf("Unknown funct3 0x%x at OP_BRANCH\n", funct3);
+        this->panic("Unknown funct3 0x%x at OP_BRANCH\n", funct3);
         exit(-1);
       }
       op1str = REGNAME[rs1];
@@ -385,7 +515,8 @@ void Simulator::decode() {
       op1 = this->reg[rs1];
       op2 = this->reg[rs2];
       offset = imm_s;
-      switch (funct3) {
+      switch (funct3)
+      {
       case 0x0:
         instname = "sb";
         insttype = SB;
@@ -403,7 +534,7 @@ void Simulator::decode() {
         insttype = SD;
         break;
       default:
-        dbgprintf("Unknown funct3 0x%x for OP_STORE\n", funct3);
+        this->panic("Unknown funct3 0x%x for OP_STORE\n", funct3);
         exit(-1);
       }
       op1str = REGNAME[rs1];
@@ -416,7 +547,8 @@ void Simulator::decode() {
       op2 = imm_i;
       offset = imm_i;
       dest = rd;
-      switch (funct3) {
+      switch (funct3)
+      {
       case 0x0:
         instname = "lb";
         insttype = LB;
@@ -445,7 +577,7 @@ void Simulator::decode() {
         instname = "lwu";
         insttype = LWU;
       default:
-        dbgprintf("Unknown funct3 0x%x for OP_LOAD\n", funct3);
+        this->panic("Unknown funct3 0x%x for OP_LOAD\n", funct3);
         exit(-1);
       }
       op1str = REGNAME[rs1];
@@ -455,11 +587,14 @@ void Simulator::decode() {
       break;
     case OP_SYSTEM:
       op1 = this->reg[10];
-      if (funct3 == 0x0 && funct7 == 0x000) {
+      if (funct3 == 0x0 && funct7 == 0x000)
+      {
         instname = "ecall";
         insttype = ECALL;
-      } else {
-        dbgprintf("Unknown OP_SYSTEM inst with funct3 0x%x and funct7 0x%x\n",
+      }
+      else
+      {
+        this->panic("Unknown OP_SYSTEM inst with funct3 0x%x and funct7 0x%x\n",
                   funct3, funct7);
       }
       inststr = instname;
@@ -468,35 +603,45 @@ void Simulator::decode() {
       op1 = this->reg[rs1];
       op2 = imm_i;
       dest = rd;
-      switch (funct3) {
+      switch (funct3)
+      {
       case 0x0:
         instname = "addiw";
         insttype = ADDIW;
         break;
       default:
-        dbgprintf("Unknown funct3 0x%x for OP_ADDIW\n", funct3);
+        this->panic("Unknown funct3 0x%x for OP_ADDIW\n", funct3);
         exit(-1);
       }
       op1str = REGNAME[rs1];
       op2str = std::to_string(op2);
       deststr = REGNAME[rd];
       inststr = instname + " " + deststr + "," + op1str + "," + op2str;
+      break;
     default:
-      dbgprintf("Unsupported opcode 0x%x!\n", opcode);
+      this->panic("Unsupported opcode 0x%x!\n", opcode);
       exit(-1);
     }
 
-    if (verbose) {
+    char buf[4096];
+    sprintf(buf, "0x%llx: %s\n", this->fReg.pc, inststr.c_str());
+    this->history.instRecord.push_back(buf);
+
+    if (verbose)
+    {
       printf("Decoded instruction 0x%.8x as %s\n", inst, inststr.c_str());
     }
-  } else { // 16 bit instruction
-    dbgprintf(
+  }
+  else
+  { // 16 bit instruction
+    this->panic(
         "Current implementation does not support 16bit RV64C instructions!\n");
     exit(-1);
   }
 
-  if (instname != INSTNAME[insttype]) {
-    dbgprintf("Unmatch instname %s with insttype %d\n", instname.c_str(),
+  if (instname != INSTNAME[insttype])
+  {
+    this->panic("Unmatch instname %s with insttype %d\n", instname.c_str(),
               insttype);
     exit(-1);
   }
@@ -509,7 +654,8 @@ void Simulator::decode() {
   this->dReg.offset = offset;
 }
 
-void Simulator::excecute() {
+void Simulator::excecute()
+{
   Inst inst = this->dReg.inst;
   int64_t op1 = this->dReg.op1;
   int64_t op2 = this->dReg.op2;
@@ -525,7 +671,8 @@ void Simulator::excecute() {
   uint32_t memLen = 0;
   bool branch = false;
 
-  switch (inst) {
+  switch (inst)
+  {
   case LUI:
     writeReg = true;
     out = offset << 12;
@@ -538,43 +685,52 @@ void Simulator::excecute() {
     writeReg = true;
     out = dRegPC + 4;
     dRegPC = dRegPC + op1;
+    branch = true;
     break;
   case JALR:
     writeReg = true;
     out = dRegPC + 4;
+    dRegPC = (op1 + op2) & (~(uint64_t)1);
+    branch = true;
     break;
   case BEQ:
-    if (op1 == op2) {
+    if (op1 == op2)
+    {
       branch = true;
       dRegPC = dRegPC + offset;
     }
     break;
   case BNE:
-    if (op1 != op2) {
+    if (op1 != op2)
+    {
       branch = true;
       dRegPC = dRegPC + offset;
     }
     break;
   case BLT:
-    if (op1 < op2) {
+    if (op1 < op2)
+    {
       branch = true;
       dRegPC = dRegPC + offset;
     }
     break;
   case BGE:
-    if (op1 >= op2) {
+    if (op1 >= op2)
+    {
       branch = true;
       dRegPC = dRegPC + offset;
     }
     break;
   case BLTU:
-    if ((uint64_t)op1 < (uint64_t)op2) {
+    if ((uint64_t)op1 < (uint64_t)op2)
+    {
       branch = true;
       dRegPC = dRegPC + offset;
     }
     break;
   case BGEU:
-    if ((uint64_t)op1 >= (uint64_t)op2) {
+    if ((uint64_t)op1 >= (uint64_t)op2)
+    {
       branch = true;
       dRegPC = dRegPC + offset;
     }
@@ -708,117 +864,157 @@ void Simulator::excecute() {
   case ECALL:
     handleSystemCall();
     break;
+  case ADDIW:
+    writeReg = true;
+    out = int64_t(int32_t(op1 + op2));
+    break;
   default:
-    dbgprintf("Unknown instruction type %d\n", inst);
+    this->panic("Unknown instruction type %d\n", inst);
     exit(-1);
   }
 
+  if (!branch)
+  {
+    dRegPC = dRegPC + 4;
+  }
+
   this->eReg.pc = dRegPC;
+  this->eReg.inst = inst;
+  this->eReg.op1 = op1; // for jalr
+  this->eReg.op2 = op2; // for store
   this->eReg.writeReg = writeReg;
   this->eReg.destReg = destReg;
-  this->eReg.op2 = op2; // for store
   this->eReg.out = out;
   this->eReg.writeMem = writeMem;
   this->eReg.readMem = readMem;
-  this->eReg.readSignExt=readSignExt;
+  this->eReg.readSignExt = readSignExt;
   this->eReg.memLen = memLen;
   this->eReg.branch = branch;
 }
 
-void Simulator::memoryAccess() {
+void Simulator::memoryAccess()
+{
+  uint64_t eRegPC = this->eReg.pc;
+  Inst inst = this->eReg.inst;
   bool writeReg = this->eReg.writeReg;
   RegId destReg = this->eReg.destReg;
+  int64_t op1 = this->eReg.op1; // for jalr
   int64_t op2 = this->eReg.op2; // for store
   int64_t out = this->eReg.out;
   bool writeMem = this->eReg.writeMem;
   bool readMem = this->eReg.readMem;
   bool readSignExt = this->eReg.readSignExt;
   uint32_t memLen = this->eReg.memLen;
-  bool branch = this->eReg.branch;
 
-  if (writeMem) {
-    switch (memLen) {
-      case 1:
-        this->memory->setByte(out, op2);
-        break;
-      case 2:
-        this->memory->setShort(out, op2);
-        break;
-      case 4:
-        this->memory->setInt(out, op2);
-        break;
-      case 8:
-        this->memory->setLong(out, op2);
-        break;
-      default:
-        dbgprintf("Unknown memLen %d\n", memLen);
-        exit(-1);
-    }
-  }
-  
-  if (readMem) {
-    switch (memLen) {
-      case 1:
-        if (readSignExt) {
-          out = (int64_t)this->memory->getByte(out);
-        } else {
-          out = (uint64_t)this->memory->getByte(out);
-        }
-        break;
-      case 2:
-        if (readSignExt) {
-          out = (int64_t)this->memory->getShort(out);
-        } else {
-          out = (uint64_t)this->memory->getShort(out);
-        }
-        break;
-      case 4:
-        if (readSignExt) {
-          out = (int64_t)this->memory->getInt(out);
-        } else {
-          out = (uint64_t)this->memory->getInt(out);
-        }
-        break;
-      case 8:
-        if (readSignExt) {
-          out = (int64_t)this->memory->getLong(out);
-        } else {
-          out = (uint64_t)this->memory->getLong(out);
-        }
-        break;
-      default:
-        dbgprintf("Unknown memLen %d\n", memLen);
-        exit(-1);
+  if (writeMem)
+  {
+    switch (memLen)
+    {
+    case 1:
+      this->memory->setByte(out, op2);
+      break;
+    case 2:
+      this->memory->setShort(out, op2);
+      break;
+    case 4:
+      this->memory->setInt(out, op2);
+      break;
+    case 8:
+      this->memory->setLong(out, op2);
+      break;
+    default:
+      this->panic("Unknown memLen %d\n", memLen);
+      exit(-1);
     }
   }
 
-  this->mReg.pc = this->eReg.pc;
-  this->mReg.destReg = this->eReg.destReg;
-  this->mReg.writeReg = this->eReg.writeReg;
-  this->mReg.out = this->eReg.out;
+  if (readMem)
+  {
+    switch (memLen)
+    {
+    case 1:
+      if (readSignExt)
+      {
+        out = (int64_t)this->memory->getByte(out);
+      }
+      else
+      {
+        out = (uint64_t)this->memory->getByte(out);
+      }
+      break;
+    case 2:
+      if (readSignExt)
+      {
+        out = (int64_t)this->memory->getShort(out);
+      }
+      else
+      {
+        out = (uint64_t)this->memory->getShort(out);
+      }
+      break;
+    case 4:
+      if (readSignExt)
+      {
+        out = (int64_t)this->memory->getInt(out);
+      }
+      else
+      {
+        out = (uint64_t)this->memory->getInt(out);
+      }
+      break;
+    case 8:
+      if (readSignExt)
+      {
+        out = (int64_t)this->memory->getLong(out);
+      }
+      else
+      {
+        out = (uint64_t)this->memory->getLong(out);
+      }
+      break;
+    default:
+      this->panic("Unknown memLen %d\n", memLen);
+      exit(-1);
+    }
+  }
+
+  this->mReg.pc = eRegPC;
+  this->mReg.inst = inst;
+  this->mReg.op1 = op1;
+  this->mReg.op2 = op2;
+  this->mReg.destReg = destReg;
+  this->mReg.writeReg = writeReg;
+  this->mReg.out = out;
 }
 
-void Simulator::writeBack() {
-  if (this->mReg.writeReg) {
-    this->reg[this->mReg.destReg] = this->mReg.out;
+void Simulator::writeBack()
+{
+  if (this->mReg.writeReg)
+  {
+    if (this->mReg.destReg != 0)
+      this->reg[this->mReg.destReg] = this->mReg.out;
   }
 
   this->pc = this->mReg.pc;
 }
 
-void Simulator::handleSystemCall() {
+void Simulator::handleSystemCall()
+{
   uint32_t type = this->reg[REG_A7];
   uint32_t arg1 = this->reg[REG_A0];
-  uint32_t arg2 = this->reg[REG_A1];
-  switch (type) {
-  case 0: // print string
+  switch (type)
+  {
+  case 0:
+  { // print string
     uint32_t addr = arg1;
     char ch = this->memory->getByte(addr);
-    while (ch != '\0') {
+    while (ch != '\0')
+    {
       printf("%c", ch);
-      ch = this->memory->getByte(addr);
+      ch = this->memory->getByte(++addr);
     }
     break;
+  }
   case 1: // print char
     printf("%c", arg1);
     break;
@@ -826,11 +1022,74 @@ void Simulator::handleSystemCall() {
     printf("%d", (int32_t)arg1);
     break;
   default:
-    dbgprintf("Unknown syscall type %d\n", type);
+    this->panic("Unknown syscall type %d\n", type);
     exit(-1);
   }
 }
 
-void Simulator::printInfo() {
+void Simulator::printInfo()
+{
+  printf("------------ CPU STATE ------------\n");
+  printf("PC: 0x%llx\n", this->pc);
+  for (uint32_t i = 0; i < 32; ++i)
+  {
+    printf("%s: 0x%.8llx(%lld) ", REGNAME[i], this->reg[i], this->reg[i]);
+    if (i % 4 == 3)
+      printf("\n");
+  }
+  printf("-----------------------------------\n");
+}
 
+std::string Simulator::getRegInfoStr()
+{
+  std::string str;
+  char buf[65536];
+
+  str += "------------ CPU STATE ------------\n";
+  sprintf(buf, "PC: 0x%llx\n", this->pc);
+  str += buf;
+  for (uint32_t i = 0; i < 32; ++i)
+  {
+    sprintf(buf, "%s: 0x%.8llx(%lld) ", REGNAME[i], this->reg[i], this->reg[i]);
+    str += buf;
+    if (i % 4 == 3)
+    {
+      str += "\n";
+    }
+  }
+  str += "-----------------------------------\n";
+
+  return str;
+}
+
+void Simulator::dumpHistory()
+{
+  std::ofstream ofile("dump.txt");
+  ofile << "================== Excecution History ==================" << std::endl;
+  for (uint32_t i = 0; i < this->history.instRecord.size(); ++i) {
+    ofile << this->history.regRecord[i];
+    ofile << this->history.instRecord[i];   
+  }
+  ofile << "========================================================" << std::endl;
+  ofile << std::endl;
+
+  ofile << "====================== Memory Dump ======================" << std::endl;
+  ofile << this->memory->dumpMemory();
+  ofile << "=========================================================" << std::endl;
+  ofile << std::endl;
+
+  ofile.close();
+}
+
+void Simulator::panic(const char *format, ...)
+{
+  char buf[BUFSIZ];
+  va_list args;
+  va_start(args, format);
+  vsprintf(buf, format, args);
+  fprintf(stderr, "%s", buf);
+  va_end(args);
+  this->dumpHistory();
+  fprintf(stderr, "Execution history and memory dump in dump.txt\n");
+  exit(-1);
 }

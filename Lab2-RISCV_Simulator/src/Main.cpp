@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
+#include <string>
 
 #include <elfio/elfio.hpp>
 
@@ -9,17 +10,56 @@
 #include "MemoryManager.h"
 #include "Simulator.h"
 
+void printUsage();
 void printElfInfo(ELFIO::elfio *reader);
 void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory);
 
-bool verbose = 1;
-bool isSingleStep = 1;
+bool verbose = 0;
+bool isSingleStep = 0;
+uint32_t stackBaseAddr = 0x80000000;
+uint32_t stackSize = 0x400000;
 MemoryManager memory;
 Simulator simulator(&memory);
 
-int main()
+int main(int argc, char **argv)
 {
-    const char *elfFile = "../riscv-elf/helloworld.riscv";
+    // Read Parameters
+    char *elfFile = nullptr;
+    for (int i = 1; i < argc; ++i)
+    {
+        if (argv[i][0] == '-')
+        {
+            switch (argv[i][1])
+            {
+            case 'v':
+                verbose = 1;
+                break;
+            case 's':
+                isSingleStep = 1;
+                break;
+            default:
+                printUsage();
+                exit(-1);
+            }
+        }
+        else
+        {
+            if (elfFile == nullptr)
+            {
+                elfFile = argv[i];
+            }
+            else
+            {
+                printUsage();
+                exit(-1);
+            }
+        }
+    }
+    if (elfFile == nullptr)
+    {
+        printUsage();
+        exit(-1);
+    }
 
     // Read ELF file
     ELFIO::elfio reader;
@@ -44,9 +84,16 @@ int main()
     simulator.isSingleStep = isSingleStep;
     simulator.verbose = verbose;
     simulator.pc = reader.get_entry();
+    simulator.initStack(stackBaseAddr, stackSize);
     simulator.simulate();
 
     return 0;
+}
+
+void printUsage()
+{
+    printf("Usage: Simulator [elfFile] [-v] [-s]\n");
+    printf("Parameters: -v verbose -s single step\n");
 }
 
 void printElfInfo(ELFIO::elfio *reader)
@@ -83,7 +130,7 @@ void printElfInfo(ELFIO::elfio *reader)
     for (int i = 0; i < sec_num; ++i)
     {
         const ELFIO::section *psec = reader->sections[i];
-        printf("[%d]\t%-12s\t0x%lx\t%ld\n", i, psec->get_name().c_str(),
+        printf("[%d]\t%-12s\t0x%llx\t%lld\n", i, psec->get_name().c_str(),
                psec->get_address(), psec->get_size());
     }
     ELFIO::Elf_Half seg_num = reader->segments.size();
@@ -92,7 +139,7 @@ void printElfInfo(ELFIO::elfio *reader)
     for (int i = 0; i < seg_num; ++i)
     {
         const ELFIO::segment *pseg = reader->segments[i];
-        printf("[%d]\t0x%x\t0x%lx\t%ld\t%ld\n", i, pseg->get_flags(),
+        printf("[%d]\t0x%x\t0x%llx\t%lld\t%lld\n", i, pseg->get_flags(),
                pseg->get_virtual_address(), pseg->get_file_size(),
                pseg->get_memory_size());
     }

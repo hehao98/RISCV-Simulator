@@ -31,6 +31,8 @@ class MemoryManager
 
     void printInfo();
 
+    std::string dumpMemory();
+
   private:
     uint32_t getFirstEntryId(uint32_t addr);
     uint32_t getSecondEntryId(uint32_t addr);

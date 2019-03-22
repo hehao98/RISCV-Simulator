@@ -2,6 +2,7 @@
 #include "Debug.h"
 
 #include <cstdio>
+#include <string>
 
 MemoryManager::MemoryManager()
 {
@@ -69,6 +70,7 @@ bool MemoryManager::copyFrom(const void *src, uint32_t dest, uint32_t len)
         }
         this->setByte(dest + i, ((uint8_t *)src)[i]);
     }
+    return true;
 }
 
 bool MemoryManager::setByte(uint32_t addr, uint8_t val)
@@ -190,6 +192,41 @@ void MemoryManager::printInfo()
                    (i << 22) + ((j + 1) << 12));
         }
     }
+}
+
+std::string MemoryManager::dumpMemory()
+{
+    char buf[65536];
+    std::string dump;
+
+    dump += "Memory Pages: \n";
+    for (uint32_t i = 0; i < 1024; ++i)
+    {
+        if (this->memory[i] == nullptr)
+        {
+            continue;
+        }
+        sprintf(buf, "0x%x-0x%x:\n", i << 22, (i + 1) << 22);
+        dump += buf;
+        for (uint32_t j = 0; j < 1024; ++j)
+        {
+            if (this->memory[i][j] == nullptr)
+            {
+                continue;
+            }       
+            sprintf(buf, "  0x%x-0x%x\n", (i << 22) + (j << 12),
+                   (i << 22) + ((j + 1) << 12));
+            dump += buf;
+
+            for (uint32_t k = 0; k < 1024; ++k) {
+                sprintf(buf, " 0x%x", this->memory[i][j][k]);
+                dump += buf;
+            }
+
+            dump += '\n';
+        }
+    }
+    return dump;
 }
 
 uint32_t MemoryManager::getFirstEntryId(uint32_t addr)
