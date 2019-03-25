@@ -15,7 +15,7 @@
 #include "Simulator.h"
 #include "BranchPredictor.h"
 
-bool parseParameters()
+bool parseParameters(int argc, char **argv);
 void printUsage();
 void printElfInfo(ELFIO::elfio *reader);
 void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory);
@@ -32,7 +32,7 @@ BranchPredictor branchPredictor;
 Simulator simulator(&memory, &branchPredictor);
 
 int main(int argc, char **argv) {
-  if (!parseParameters()) {
+  if (!parseParameters(argc, argv)) {
     printUsage();
     exit(-1);
   }
@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-bool parseParameters() {
+bool parseParameters(int argc, char **argv) {
    // Read Parameters
   for (int i = 1; i < argc; ++i) {
     if (argv[i][0] == '-') {
@@ -119,7 +119,7 @@ bool parseParameters() {
 }
 
 void printUsage() {
-  printf("Usage: Simulator [riscv-elf-file] [-v] [-s] [-d] [-b param]\n");
+  printf("Usage: Simulator riscv-elf-file [-v] [-s] [-d] [-b param]\n");
   printf("Parameters: \n\t[-v] verbose output \n\t[-s] single step\n");
   printf("\t[-d] dump execution trace to dump.txt\n");
   printf("\t[-b param] branch perdiction strategy, accepted param AT, NT, BTFNT\n");

@@ -1,4 +1,4 @@
-# RISCV Emulator
+# RISC-V Simulator
 
 A Simple RISC-V CPU Emulator, for Computer Architecture Labs at Peking University
 

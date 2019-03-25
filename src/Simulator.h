@@ -174,11 +174,19 @@ public:
 
 private:
   struct FReg {
+    // Control Signals
+    bool bubble;
+    bool stall;
+
     uint64_t pc;
     uint32_t inst;
     uint32_t len;
   } fReg, fRegNew;
   struct DReg {
+    // Control Signals
+    bool bubble;
+    bool stall;
+
     uint64_t pc;
     RISCV::Inst inst;
     int64_t op1;
@@ -188,6 +196,10 @@ private:
     bool predictedBranch;
   } dReg, dRegNew;
   struct EReg {
+    // Control Signals
+    bool bubble;
+    bool stall;
+
     uint64_t pc;
     RISCV::Inst inst;
     int64_t op1;
@@ -202,6 +214,10 @@ private:
     bool branch;
   } eReg, eRegNew;
   struct MReg {
+    // Control Signals
+    bool bubble;
+    bool stall;
+
     uint64_t pc;
     RISCV::Inst inst;
     int64_t op1;

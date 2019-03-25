@@ -5,6 +5,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cstring>
 
 #include "Debug.h"
 #include "Simulator.h"
@@ -83,6 +84,23 @@ void Simulator::initStack(uint32_t baseaddr, uint32_t maxSize) {
 }
 
 void Simulator::simulate() {
+  // Initialize pipeline registers
+  memset(&this->fReg, 0, sizeof(this->fReg));
+  memset(&this->fRegNew, 0, sizeof(this->fRegNew));
+  memset(&this->dReg, 0, sizeof(this->dReg));
+  memset(&this->dRegNew, 0, sizeof(this->dReg));
+  memset(&this->eReg, 0, sizeof(this->eReg));
+  memset(&this->eRegNew, 0, sizeof(this->eRegNew));
+  memset(&this->mReg, 0, sizeof(this->mReg));
+  memset(&this->mRegNew, 0, sizeof(this->mRegNew));
+
+  // Insert Bubble to later pipeline stages
+  fReg.bubble = true;
+  dReg.bubble = true;
+  eReg.bubble = true;
+  mReg.bubble = true;
+
+  // Main Simulation Loop
   while (true) {
     if (this->reg[0] != 0) {
       // Some instruction might set this register to zero
@@ -94,11 +112,22 @@ void Simulator::simulate() {
       this->panic("Stack Overflow!\n");
     }
 
+    // THE EXECUTION ORDER of these functions are important!!!
+    // Changing them will introduce strange bugs
     this->fetch();
     this->decode();
     this->excecute();
     this->memoryAccess();
     this->writeBack();
+
+    this->fReg = this->fRegNew;
+    this->dReg = this->dRegNew;
+    this->eReg = this->eRegNew;
+    this->mReg = this->mRegNew;
+    memset(&this->fRegNew, 0, sizeof(this->fRegNew));
+    memset(&this->dRegNew, 0, sizeof(this->dRegNew));
+    memset(&this->eRegNew, 0, sizeof(this->eRegNew));
+    memset(&this->mRegNew, 0, sizeof(this->mRegNew));
 
     this->history.cycleCount++;
     this->history.instCount++;
@@ -143,13 +172,29 @@ void Simulator::fetch() {
     }
   }
 
-  this->fReg.inst = inst;
-  this->fReg.len = len;
-  this->fReg.pc = this->pc;
+  this->fRegNew.bubble = false;
+  this->fRegNew.stall = false;
+  this->fRegNew.inst = inst;
+  this->fRegNew.len = len;
+  this->fRegNew.pc = this->pc;
   this->pc = this->pc + len;
 }
 
 void Simulator::decode() {
+  if (this->fReg.stall) {
+    if (verbose) {
+      printf("Decode: Stall\n");
+    }
+    return;
+  }
+  if (this->fReg.bubble) {
+    if (verbose) {
+      printf("Decode: Bubble\n");
+    }
+    this->dRegNew.bubble = true;
+    return;
+  }
+
   std::string instname = "";
   std::string inststr = "";
   std::string deststr, op1str, op2str, offsetstr;
@@ -585,16 +630,32 @@ void Simulator::decode() {
                                                      op1, op2, offset);
   }
 
-  this->dReg.pc = this->fReg.pc;
-  this->dReg.inst = insttype;
-  this->dReg.predictedBranch = predictedBranch;
-  this->dReg.dest = dest;
-  this->dReg.op1 = op1;
-  this->dReg.op2 = op2;
-  this->dReg.offset = offset;
+  this->dRegNew.stall = false;
+  this->dRegNew.bubble = false;
+  this->dRegNew.pc = this->fReg.pc;
+  this->dRegNew.inst = insttype;
+  this->dRegNew.predictedBranch = predictedBranch;
+  this->dRegNew.dest = dest;
+  this->dRegNew.op1 = op1;
+  this->dRegNew.op2 = op2;
+  this->dRegNew.offset = offset;
 }
 
 void Simulator::excecute() {
+  if (this->dReg.stall) {
+    if (verbose) {
+      printf("Execute: Stall\n");
+    }
+    return;
+  }
+  if (this->dReg.bubble) {
+    if (verbose) {
+      printf("Execute: Bubble\n");
+    }
+    this->eRegNew.bubble = true;
+    return;
+  }
+
   Inst inst = this->dReg.inst;
   int64_t op1 = this->dReg.op1;
   int64_t op2 = this->dReg.op2;
@@ -838,21 +899,41 @@ void Simulator::excecute() {
     dRegPC = dRegPC + 4;
   }
 
-  this->eReg.pc = dRegPC;
-  this->eReg.inst = inst;
-  this->eReg.op1 = op1; // for jalr
-  this->eReg.op2 = op2; // for store
-  this->eReg.writeReg = writeReg;
-  this->eReg.destReg = destReg;
-  this->eReg.out = out;
-  this->eReg.writeMem = writeMem;
-  this->eReg.readMem = readMem;
-  this->eReg.readSignExt = readSignExt;
-  this->eReg.memLen = memLen;
-  this->eReg.branch = branch;
+  if (verbose) {
+    printf("Execute: %s\n", INSTNAME[inst]);
+  }
+
+  this->eRegNew.bubble = false;
+  this->eRegNew.stall = false;
+  this->eRegNew.pc = dRegPC;
+  this->eRegNew.inst = inst;
+  this->eRegNew.op1 = op1; // for jalr
+  this->eRegNew.op2 = op2; // for store
+  this->eRegNew.writeReg = writeReg;
+  this->eRegNew.destReg = destReg;
+  this->eRegNew.out = out;
+  this->eRegNew.writeMem = writeMem;
+  this->eRegNew.readMem = readMem;
+  this->eRegNew.readSignExt = readSignExt;
+  this->eRegNew.memLen = memLen;
+  this->eRegNew.branch = branch;
 }
 
 void Simulator::memoryAccess() {
+  if (this->eReg.stall) {
+    if (verbose) {
+      printf("Memory Access: Stall\n");
+    }
+    return;
+  }
+  if (this->eReg.bubble) {
+    if (verbose) {
+      printf("Memory Access: Bubble\n");
+    }
+    this->mRegNew.bubble = true;
+    return;
+  }
+
   uint64_t eRegPC = this->eReg.pc;
   Inst inst = this->eReg.inst;
   bool writeReg = this->eReg.writeReg;
@@ -919,22 +1000,45 @@ void Simulator::memoryAccess() {
     }
   }
 
-  this->mReg.pc = eRegPC;
-  this->mReg.inst = inst;
-  this->mReg.op1 = op1;
-  this->mReg.op2 = op2;
-  this->mReg.destReg = destReg;
-  this->mReg.writeReg = writeReg;
-  this->mReg.out = out;
+  if (verbose) {
+    printf("Memory Access: %s\n", INSTNAME[inst]);
+  }
+
+  this->mRegNew.bubble = false;
+  this->mRegNew.stall = false;
+  this->mRegNew.pc = eRegPC;
+  this->mRegNew.inst = inst;
+  this->mRegNew.op1 = op1;
+  this->mRegNew.op2 = op2;
+  this->mRegNew.destReg = destReg;
+  this->mRegNew.writeReg = writeReg;
+  this->mRegNew.out = out;
 }
 
 void Simulator::writeBack() {
+  if (this->mReg.stall) {
+    if (verbose) {
+      printf("WriteBack: stall\n");
+    }
+    return;
+  }
+  if (this->mReg.bubble) {
+    if (verbose) {
+      printf("WriteBack: Bubble\n");
+    }
+    return;
+  }
+
+  if (verbose) {
+    printf("WriteBack: %s\n", INSTNAME[this->mReg.inst]);
+  }
+
   if (this->mReg.writeReg) {
     if (this->mReg.destReg != 0)
       this->reg[this->mReg.destReg] = this->mReg.out;
   }
 
-  this->pc = this->mReg.pc;
+  //this->pc = this->mReg.pc;
 }
 
 void Simulator::handleSystemCall() {
@@ -958,7 +1062,8 @@ void Simulator::handleSystemCall() {
     break;
   case 3:
   case 93: // exit
-    printf("Program exit from an exit system call\n");
+    this->history.instCount++;
+    printf("Program exit from an exit() system call\n");
     if (shouldDumpHistory) {
       printf("Dumping history to dump.txt...");
       this->dumpHistory();
