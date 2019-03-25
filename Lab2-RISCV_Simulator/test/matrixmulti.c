@@ -1,6 +1,6 @@
 #include "lib.h"
 
-const int M = 2;
+const int M = 3;
 
 void matmulti(int a[M][M], int b[M][M], int c[M][M], int M) {
   for (int i = 0; i < M; ++i) {

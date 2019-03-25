@@ -17,5 +17,8 @@ int main() {
     y = d << f;
     print_d(y); 
     print_c('\n');
+    z = d >> 4;
+    print_d(z);
+    print_c('\n');
     exit_proc();
 }
