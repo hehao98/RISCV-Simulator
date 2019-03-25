@@ -26,7 +26,9 @@ make
 ```
 ./Simulator riscv-elf-file-name [-v] [-s] [-d]
 ```
-`-v` for verbose output, `-s` for single step execution, `-d` for dumping execution history to `dump.txt`
+`-v` for verbose output, `-s` for single step execution, `-d` for dumping execution history to `dump.txt`.
+
+There are a number of reference RISC-V ELFs and its corresponding assembly code in the `riscv-elfs` folder.
 
 ## Documentation (In Chinese)
 
