@@ -935,6 +935,7 @@ void Simulator::handleSystemCall() {
       printf("Dumping history to dump.txt...");
       this->dumpHistory();
     }
+    this->printStatistics();
     exit(0);
   default:
     this->panic("Unknown syscall type %d\n", type);
@@ -950,6 +951,13 @@ void Simulator::printInfo() {
       printf("\n");
   }
   printf("-----------------------------------\n");
+}
+
+void Simulator::printStatistics() {
+  printf("------------ STATISTICS -----------\n");
+  printf("Total Number of Instructions Executed: %ld\n", this->history.instRecord.size());
+  printf("-----------------------------------\n");
+
 }
 
 std::string Simulator::getRegInfoStr() {

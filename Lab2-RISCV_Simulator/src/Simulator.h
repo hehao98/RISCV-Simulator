@@ -153,6 +153,8 @@ public:
 
   void printInfo();
 
+  void printStatistics();
+
 private:
   struct FReg {
     uint64_t pc;
