@@ -96,6 +96,10 @@ void Simulator::simulate() {
     this->writeBack();
 
     this->history.regRecord.push_back(this->getRegInfoStr());
+    if (this->history.regRecord.size() >= 100000) { // Avoid using up memory
+      this->history.regRecord.clear();
+      this->history.instRecord.clear();
+    }
 
     if (verbose) {
       this->printInfo();
