@@ -12,7 +12,7 @@ int ackermann(int m, int n) {
 
 int main() {
   for (int i = 0; i <= 3; ++i) {
-    for (int j = 0; j <= 1; ++j) {
+    for (int j = 0; j <= 4; ++j) {
       int result = ackermann(i, j);
       print_s("Ackermann(");
       print_d(i);

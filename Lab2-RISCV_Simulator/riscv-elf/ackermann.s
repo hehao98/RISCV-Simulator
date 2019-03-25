@@ -198,7 +198,7 @@ Disassembly of section .text:
    10370:	fef42423          	sw	a5,-24(s0)
    10374:	fe842783          	lw	a5,-24(s0)
    10378:	0007871b          	sext.w	a4,a5
-   1037c:	00100793          	li	a5,1
+   1037c:	00400793          	li	a5,4
    10380:	f6e7d4e3          	ble	a4,a5,102e8 <main+0x20>
    10384:	fec42783          	lw	a5,-20(s0)
    10388:	0017879b          	addiw	a5,a5,1
