@@ -16,6 +16,7 @@ void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory);
 
 bool verbose = 0;
 bool isSingleStep = 0;
+bool dumpHistory = 0;
 uint32_t stackBaseAddr = 0x80000000;
 uint32_t stackSize = 0x400000;
 MemoryManager memory;
@@ -36,6 +37,9 @@ int main(int argc, char **argv)
                 break;
             case 's':
                 isSingleStep = 1;
+                break;
+            case 'd':
+                dumpHistory = 1;
                 break;
             default:
                 printUsage();
@@ -86,6 +90,12 @@ int main(int argc, char **argv)
     simulator.pc = reader.get_entry();
     simulator.initStack(stackBaseAddr, stackSize);
     simulator.simulate();
+
+    if (dumpHistory)
+    {
+        printf("Dumping history to dump.txt...\n");
+        simulator.dumpHistory();
+    }
 
     return 0;
 }

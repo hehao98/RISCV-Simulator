@@ -2,5 +2,9 @@
 
 int main() {
   print_s("Hello, World!\n");
-  return 0;
+
+  print_d(13456);
+
+  
+  exit();
 }

@@ -21,3 +21,8 @@ void print_c(char ch)
     asm("li a7, 1;"
         "scall");
 }
+
+void exit() {
+    asm("li a7, 3;"
+        "scall");
+}

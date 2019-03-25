@@ -213,17 +213,16 @@ std::string MemoryManager::dumpMemory()
             if (this->memory[i][j] == nullptr)
             {
                 continue;
-            }       
+            }
             sprintf(buf, "  0x%x-0x%x\n", (i << 22) + (j << 12),
-                   (i << 22) + ((j + 1) << 12));
+                    (i << 22) + ((j + 1) << 12));
             dump += buf;
 
-            for (uint32_t k = 0; k < 1024; ++k) {
-                sprintf(buf, " 0x%x", this->memory[i][j][k]);
+            for (uint32_t k = 0; k < 1024; ++k)
+            {
+                sprintf(buf, "    0x%x: 0x%x\n", (i << 22) + (j << 12) + k, this->memory[i][j][k]);
                 dump += buf;
             }
-
-            dump += '\n';
         }
     }
     return dump;

@@ -1,10 +1,11 @@
 #ifndef SIMULATOR_H
 #define SIMULATOR_H
 
-#include <cstdint>
 #include <cstdarg>
+#include <cstdint>
 #include <string>
 #include <vector>
+
 
 #include "MemoryManager.h"
 
@@ -103,6 +104,14 @@ enum Inst {
   DIV = 43,
   REM = 44,
   LWU = 45,
+  SLLIW = 46,
+  SRLIW = 47,
+  SRAIW = 48,
+  ADDW = 49,
+  SUBW = 50,
+  SLLW = 51,
+  SRLW = 52,
+  SRAW = 53,
   UNKNOWN = -1,
 };
 extern const char *INSTNAME[];
@@ -118,7 +127,8 @@ const int OP_SYSTEM = 0x73;
 const int OP_AUIPC = 0x17;
 const int OP_JAL = 0x6F;
 const int OP_JALR = 0x67;
-const int OP_ADDIW = 0x1B;
+const int OP_IMM32 = 0x1B;
+const int OP_32 = 0x3B;
 } // namespace RISCV
 
 class Simulator {
@@ -137,6 +147,10 @@ public:
   void initStack(uint32_t baseaddr, uint32_t maxSize);
 
   void simulate();
+
+  void dumpHistory();
+
+  void printInfo();
 
 private:
   struct FReg {
@@ -190,9 +204,7 @@ private:
 
   void handleSystemCall();
 
-  void printInfo();
   std::string getRegInfoStr();
-  void dumpHistory();
   void panic(const char *format, ...);
 };
 
