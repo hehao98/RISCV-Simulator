@@ -5,5 +5,6 @@ int main() {
     print_c('a');
     print_c('b');
     print_c('c');
+    print_c('\n');
     exit_proc();
 }

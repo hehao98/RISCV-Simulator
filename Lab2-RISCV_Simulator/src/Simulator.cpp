@@ -518,7 +518,7 @@ void Simulator::decode() {
           instname = "addw";
           insttype = ADDW;
         } else if (temp == 0x20) {
-          instname == "subw";
+          instname = "subw";
           insttype = SUBW;
         } else {
           this->panic("Unknown 32bit funct7 0x%x\n", temp);
@@ -929,6 +929,13 @@ void Simulator::handleSystemCall() {
   case 2: // print num
     printf("%d", (int32_t)arg1);
     break;
+  case 3: // exit
+    printf("Program exit from an exit system call\n");
+    if (shouldDumpHistory) {
+      printf("Dumping history to dump.txt...");
+      this->dumpHistory();
+    }
+    exit(0);
   default:
     this->panic("Unknown syscall type %d\n", type);
   }

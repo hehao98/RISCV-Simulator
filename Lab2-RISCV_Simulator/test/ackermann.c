@@ -11,9 +11,17 @@ int ackermann(int m, int n) {
 }
 
 int main() {
-  int result = ackermann(4, 1);
-  print_s("Akermann(4, 1) = ");
-  print_d(result);
-  print_s("\n");
+  for (int i = 0; i <= 3; ++i) {
+    for (int j = 0; j <= 1; ++j) {
+      int result = ackermann(i, j);
+      print_s("Ackermann(");
+      print_d(i);
+      print_s(",");
+      print_d(j);
+      print_s(") = ");
+      print_d(result);
+      print_c('\n');
+    }
+  }
   exit_proc();
 }

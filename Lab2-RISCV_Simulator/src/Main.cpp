@@ -87,6 +87,7 @@ int main(int argc, char **argv)
 
     simulator.isSingleStep = isSingleStep;
     simulator.verbose = verbose;
+    simulator.shouldDumpHistory = dumpHistory;
     simulator.pc = reader.get_entry();
     simulator.initStack(stackBaseAddr, stackSize);
     simulator.simulate();

@@ -135,6 +135,7 @@ class Simulator {
 public:
   bool isSingleStep;
   bool verbose;
+  bool shouldDumpHistory;
   uint64_t pc;
   uint64_t reg[RISCV::REGNUM];
   uint32_t stackBase;
