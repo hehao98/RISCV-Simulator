@@ -15,10 +15,12 @@
 #include "Simulator.h"
 #include "BranchPredictor.h"
 
+bool parseParameters()
 void printUsage();
 void printElfInfo(ELFIO::elfio *reader);
 void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory);
 
+char *elfFile = nullptr;
 bool verbose = 0;
 bool isSingleStep = 0;
 bool dumpHistory = 0;
@@ -30,53 +32,7 @@ BranchPredictor branchPredictor;
 Simulator simulator(&memory, &branchPredictor);
 
 int main(int argc, char **argv) {
-  // Read Parameters
-  char *elfFile = nullptr;
-  for (int i = 1; i < argc; ++i) {
-    if (argv[i][0] == '-') {
-      switch (argv[i][1]) {
-      case 'v':
-        verbose = 1;
-        break;
-      case 's':
-        isSingleStep = 1;
-        break;
-      case 'd':
-        dumpHistory = 1;
-        break;
-      case 'b':
-        if (i + 1 < argc) {
-          std::string str = argv[i + 1];
-          i++;
-          if (str == "AT") {
-            strategy = BranchPredictor::Strategy::AT;
-          } else if (str == "NT") {
-            strategy = BranchPredictor::Strategy::NT;
-          } else if (str == "BTFNT") {
-            strategy = BranchPredictor::Strategy::BTFNT;
-          } else {
-            printUsage();
-            exit(-1);
-          }
-        } else {
-          printUsage();
-          exit(-1);
-        }
-        break;
-      default:
-        printUsage();
-        exit(-1);
-      }
-    } else {
-      if (elfFile == nullptr) {
-        elfFile = argv[i];
-      } else {
-        printUsage();
-        exit(-1);
-      }
-    }
-  }
-  if (elfFile == nullptr) {
+  if (!parseParameters()) {
     printUsage();
     exit(-1);
   }
@@ -112,6 +68,54 @@ int main(int argc, char **argv) {
   }
 
   return 0;
+}
+
+bool parseParameters() {
+   // Read Parameters
+  for (int i = 1; i < argc; ++i) {
+    if (argv[i][0] == '-') {
+      switch (argv[i][1]) {
+      case 'v':
+        verbose = 1;
+        break;
+      case 's':
+        isSingleStep = 1;
+        break;
+      case 'd':
+        dumpHistory = 1;
+        break;
+      case 'b':
+        if (i + 1 < argc) {
+          std::string str = argv[i + 1];
+          i++;
+          if (str == "AT") {
+            strategy = BranchPredictor::Strategy::AT;
+          } else if (str == "NT") {
+            strategy = BranchPredictor::Strategy::NT;
+          } else if (str == "BTFNT") {
+            strategy = BranchPredictor::Strategy::BTFNT;
+          } else {
+            return false;
+          }
+        } else {
+          return false;
+        }
+        break;
+      default:
+        return false;
+      }
+    } else {
+      if (elfFile == nullptr) {
+        elfFile = argv[i];
+      } else {
+        return false;
+      }
+    }
+  }
+  if (elfFile == nullptr) {
+    return false;
+  }
+  return true;
 }
 
 void printUsage() {
