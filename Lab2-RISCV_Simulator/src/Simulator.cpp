@@ -929,7 +929,7 @@ void Simulator::handleSystemCall() {
   case 2: // print num
     printf("%d", (int32_t)arg1);
     break;
-  case 3: // exit
+  case 3: case 93: // exit
     printf("Program exit from an exit system call\n");
     if (shouldDumpHistory) {
       printf("Dumping history to dump.txt...");

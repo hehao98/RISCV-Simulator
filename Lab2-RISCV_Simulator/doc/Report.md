@@ -8,7 +8,7 @@
 
 #### 1.1 实验环境的安装与配置
 
-本次实验的环境为Ubuntu 16.04，模拟器使用的编程语言为C++ 11，构建环境为CMake，编译器为G++，编译使用的Flag为`-O2 -Wall`。
+模拟器运行的环境为Ubuntu 16.04，模拟器使用的编程语言为C++ 11，构建环境为CMake，编译器为G++，编译使用的Flag为`-O2 -Wall`。
 
 首先，必须搭建RISC-V相关的编译、运行和测试环境。简便起见，本次实验全部基于RISC-V 64I指令集，为了配置环境，执行了如下步骤。
 
@@ -29,7 +29,9 @@ make -j$(nproc)
 riscv64-unknown-elf-gcc -march=rv64i test/arithmetic.c test/lib.c -o riscv-elf/arithmetic.riscv
 ```
 
-#### 1.2 使用的测试程序
+#### 1.2 使用的测试程序和测试方法
+
+对一个体系结构模拟器进行测试是比较困难的，
 
 为了对RISC-V模拟器进行测试，编写了如下程序（见`test/`文件夹）
 
@@ -42,6 +44,8 @@ ackermann.c
 ```
 
 ### 二、设计概述
+
+
 
 ### 三、具体设计和实现
 
