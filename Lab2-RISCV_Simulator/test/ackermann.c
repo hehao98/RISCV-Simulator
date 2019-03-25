@@ -1,4 +1,4 @@
-#include "lib.c"
+#include "lib.h"
 
 int ackermann(int m, int n) {
   if (m == 0) {
@@ -15,5 +15,5 @@ int main() {
   print_s("Akermann(4, 1) = ");
   print_d(result);
   print_s("\n");
-  return 0;
+  exit_proc();
 }

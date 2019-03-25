@@ -22,7 +22,7 @@ void print_c(char ch)
         "scall");
 }
 
-void exit() {
+void exit_proc() {
     asm("li a7, 3;"
         "scall");
 }

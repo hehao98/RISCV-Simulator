@@ -5,6 +5,6 @@ void print_d(int num);
 void print_s(const char *str);
 void print_c(char ch);
 
-void exit();
+void exit_proc();
 
 #endif

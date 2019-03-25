@@ -1,4 +1,4 @@
-#include "libc.h"
+#include "lib.h"
 
 void quicksort(int *a, int begin, int end) {
   int i, j, t, pivot;
@@ -28,20 +28,22 @@ void quicksort(int *a, int begin, int end) {
 
 int main() {
   const int N = 10;
-  int a[N] = {5, 3, 5, 6, 7, 1, 3, 5, 6, 1};
+  int a[10] = {5, 3, 5, 6, 7, 1, 3, 5, 6, 1};
 
-  printf("Prev A:");
+  print_s("Prev A:");
   for (int i = 0; i < N; ++i) {
-    printf("%d ", a[i]);
+    print_d(a[i]);
+    print_s(" ");
   }
-  printf("\n");
+  print_s("\n");
 
-  printf("Sorted A: ");
+  print_s("Sorted A: ");
   quicksort(a, 0, N - 1);
   for (int i = 0; i < N; ++i) {
-    printf("%d ", a[i]);
+    print_d(a[i]);
+    print_s(" ");
   }
-  printf("\n");
+  print_s("\n");
 
-  return 0;
+  exit_proc();
 }

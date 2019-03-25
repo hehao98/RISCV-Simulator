@@ -1,4 +1,4 @@
-#include "lib.c"
+#include "lib.h"
 
 const int M = 2;
 
@@ -18,8 +18,8 @@ int main() {
 
   for (int i = 0; i < M; ++i) {
     for (int j = 0; j < M; ++j) {
-      A[i][j] = rand() % 5;
-      B[i][j] = rand() % 5;
+      A[i][j] = i;
+      B[i][j] = j;
       C[i][j] = 0;
     }
   }
@@ -53,5 +53,5 @@ int main() {
     print_s("\n");
   }
 
-  return 0;
+  exit_proc();
 }
