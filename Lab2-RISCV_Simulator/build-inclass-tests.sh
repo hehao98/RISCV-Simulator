@@ -2,12 +2,12 @@
 
 echo "Building RISC-V ELFs..."
 cd test-inclass
-~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i add.c test/lib.c -o add.riscv
-~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i double-float.c test/lib.c -o double-float.riscv
-~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i mul-div.c test/lib.c -o mul-div.riscv
-~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i n!.c test/lib.c -o n!.riscv
-~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i qsort.c test/lib.c -o qsort.riscv
-~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i simple-function.c test/lib.c -o simple-function.riscv
+~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i add.c -o add.riscv
+~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i double-float.c -o double-float.riscv
+~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i mul-div.c -o mul-div.riscv
+~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i n!.c -o n!.riscv
+~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i qsort.c -o qsort.riscv
+~/riscv64i/bin/riscv64-unknown-elf-gcc -march=rv64i simple-function.c -o simple-function.riscv
 echo "Automatically dumping ELFs for reference"
 ~/riscv64i/bin/riscv64-unknown-elf-objdump -D add.riscv > add.s
 ~/riscv64i/bin/riscv64-unknown-elf-objdump -D double-float.riscv > double-float.s
