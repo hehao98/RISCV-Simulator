@@ -1,3 +1,9 @@
+/*
+ * Instruction Level Simulator
+ * 
+ * Created by He, Hao at 2019-3-25
+ */ 
+
 #ifndef SIMULATOR_H
 #define SIMULATOR_H
 

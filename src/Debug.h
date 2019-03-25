@@ -1,3 +1,9 @@
+/*
+ * Debug Utility function
+ * 
+ * Created by He, Hao at 2019-3-25
+ */ 
+
 #ifndef SIMULATOR_DEBUG_H
 #define SIMULATOR_DEBUG_H
 
