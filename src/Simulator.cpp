@@ -1,6 +1,6 @@
 /*
- * Created by He, Hao at 2019-3-25
- */ 
+ * Created by He, Hao at 2019-3-11
+ */
 
 #include <fstream>
 #include <sstream>
@@ -59,8 +59,9 @@ const char *INSTNAME[]{
 
 using namespace RISCV;
 
-Simulator::Simulator(MemoryManager *memory) {
+Simulator::Simulator(MemoryManager *memory, BranchPredictor *predictor) {
   this->memory = memory;
+  this->branchPredictor = predictor;
   this->pc = 0;
   for (int i = 0; i < REGNUM; ++i) {
     this->reg[i] = 0;
@@ -99,6 +100,8 @@ void Simulator::simulate() {
     this->memoryAccess();
     this->writeBack();
 
+    this->history.cycleCount++;
+    this->history.instCount++;
     this->history.regRecord.push_back(this->getRegInfoStr());
     if (this->history.regRecord.size() >= 100000) { // Avoid using up memory
       this->history.regRecord.clear();
@@ -576,8 +579,15 @@ void Simulator::decode() {
                 insttype);
   }
 
+  bool predictedBranch = false;
+  if (isBranch(insttype)) {
+    predictedBranch = this->branchPredictor->predict(this->fReg.pc, insttype,
+                                                     op1, op2, offset);
+  }
+
   this->dReg.pc = this->fReg.pc;
   this->dReg.inst = insttype;
+  this->dReg.predictedBranch = predictedBranch;
   this->dReg.dest = dest;
   this->dReg.op1 = op1;
   this->dReg.op2 = op2;
@@ -589,6 +599,7 @@ void Simulator::excecute() {
   int64_t op1 = this->dReg.op1;
   int64_t op2 = this->dReg.op2;
   int64_t offset = this->dReg.offset;
+  bool predictedBranch = this->dReg.predictedBranch;
 
   uint64_t dRegPC = this->dReg.pc;
   bool writeReg = false;
@@ -815,6 +826,14 @@ void Simulator::excecute() {
     this->panic("Unknown instruction type %d\n", inst);
   }
 
+  if (isBranch(inst)) {
+    if (predictedBranch == branch) {
+      this->history.predictedBranch++;
+    } else {
+      this->history.unpredictedBranch++;
+    }
+  }
+
   if (!branch) {
     dRegPC = dRegPC + 4;
   }
@@ -937,7 +956,8 @@ void Simulator::handleSystemCall() {
   case 2: // print num
     printf("%d", (int32_t)arg1);
     break;
-  case 3: case 93: // exit
+  case 3:
+  case 93: // exit
     printf("Program exit from an exit system call\n");
     if (shouldDumpHistory) {
       printf("Dumping history to dump.txt...");
@@ -963,9 +983,21 @@ void Simulator::printInfo() {
 
 void Simulator::printStatistics() {
   printf("------------ STATISTICS -----------\n");
-  printf("Total Number of Instructions Executed: %ld\n", this->history.instRecord.size());
+  printf("Number of Instructions: %u\n", this->history.instCount);
+  printf("Number of Cycles: %u\n", this->history.cycleCount);
+  printf("Number of Stalled Cycles: %u\n", this->history.stalledCycleCount);
+  printf("Avg Cycles per Instrcution: %.4f\n",
+         (float)this->history.cycleCount / this->history.instCount);
+  printf("Branch Perdiction Accuacy: %.4f (Strategy: %s)\n",
+         (float)this->history.predictedBranch /
+             (this->history.predictedBranch + this->history.unpredictedBranch),
+         this->branchPredictor->strategyName().c_str());
+  printf("Number of Control Hazards: %lu\n",
+         this->history.controlHazardAddrs.size());
+  printf("Number of Data Hazards: %lu\n", this->history.dataHazardAddrs.size());
+  printf("Number of Memory Hazards: %lu\n",
+         this->history.memoryHazardAddrs.size());
   printf("-----------------------------------\n");
-
 }
 
 std::string Simulator::getRegInfoStr() {

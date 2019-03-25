@@ -1,8 +1,8 @@
 /*
- * Instruction Level Simulator
- * 
- * Created by He, Hao at 2019-3-25
- */ 
+ * Main Body for the RISCV Simulator
+ *
+ * Created by He, Hao at 2019-3-11
+ */
 
 #ifndef SIMULATOR_H
 #define SIMULATOR_H
@@ -12,8 +12,9 @@
 #include <string>
 #include <vector>
 
-
+#include "BranchPredictor.h"
 #include "MemoryManager.h"
+
 
 namespace RISCV {
 
@@ -135,6 +136,15 @@ const int OP_JAL = 0x6F;
 const int OP_JALR = 0x67;
 const int OP_IMM32 = 0x1B;
 const int OP_32 = 0x3B;
+
+inline bool isBranch(Inst inst) {
+  if (inst == BEQ || inst == BNE || inst == BLT || inst == BGE ||
+      inst == BLTU || inst == BGEU) {
+    return true;
+  }
+  return false;
+}
+
 } // namespace RISCV
 
 class Simulator {
@@ -147,8 +157,9 @@ public:
   uint32_t stackBase;
   uint32_t maximumStackSize;
   MemoryManager *memory;
+  BranchPredictor *branchPredictor;
 
-  Simulator(MemoryManager *memory);
+  Simulator(MemoryManager *memory, BranchPredictor *predictor);
   ~Simulator();
 
   void initStack(uint32_t baseaddr, uint32_t maxSize);
@@ -166,7 +177,7 @@ private:
     uint64_t pc;
     uint32_t inst;
     uint32_t len;
-  } fReg;
+  } fReg, fRegNew;
   struct DReg {
     uint64_t pc;
     RISCV::Inst inst;
@@ -174,7 +185,8 @@ private:
     int64_t op2;
     RISCV::RegId dest;
     int64_t offset;
-  } dReg;
+    bool predictedBranch;
+  } dReg, dRegNew;
   struct EReg {
     uint64_t pc;
     RISCV::Inst inst;
@@ -188,7 +200,7 @@ private:
     bool readSignExt;
     uint32_t memLen;
     bool branch;
-  } eReg;
+  } eReg, eRegNew;
   struct MReg {
     uint64_t pc;
     RISCV::Inst inst;
@@ -197,11 +209,27 @@ private:
     int64_t out;
     bool writeReg;
     RISCV::RegId destReg;
-  } mReg;
+  } mReg, mRegNew;
 
   struct History {
+    uint32_t instCount;
+    uint32_t cycleCount;
+    uint32_t stalledCycleCount;
+
+    uint32_t predictedBranch; // Number of branch that is predicted successfully
+    uint32_t unpredictedBranch; // Number of branch that is not predicted
+                                // successfully
+
+    std::vector<uint32_t>
+        dataHazardAddrs; // Instruction Addresses with data hazard
+    std::vector<uint32_t>
+        controlHazardAddrs; // Instruction Addresses with control hazard
+    std::vector<uint32_t>
+        memoryHazardAddrs; // Instruction Addresses with memory hazard
+
     std::vector<std::string> instRecord;
     std::vector<std::string> regRecord;
+
     std::string memoryDump;
   } history;
 

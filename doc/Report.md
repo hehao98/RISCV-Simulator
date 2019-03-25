@@ -50,7 +50,7 @@ ackermann.c # 求解Ackermann函数
 
 #### 2.1 开发环境
 
-模拟器运行的环境为Ubuntu 16.04，使用的编程语言为C++ 11，构建环境为CMake，编译器为G++，编译使用的Flag为`-O2 -Wall`。开发使用的工具为VS Code。不过，模拟器代码尽量避免了使用标准库以外的平台相关功能，所以应该也能在其他平台上编译运行。
+我测试的模拟器运行的环境为Mac OS X，使用的编程语言为C++ 11，构建环境为CMake，编译器为`Apple Clang 10.0.0`，编译使用的Flag为`-O2 -Wall`。开发使用的工具为VS Code。不过，模拟器代码尽量避免了使用标准库以外的平台相关功能，所以应该也能在其他平台和编译器上编译运行。
 
 #### 2.2 设计考量
 
@@ -60,9 +60,46 @@ ackermann.c # 求解Ackermann函数
 
 此外，模拟器必须能够扩展流水线模拟和缓存模拟的功能。这是出于使用此模拟器进行更加深入的体系结构实验的要求。
 
-本次模拟器的实现并不是要做一个成熟可用的工业级体系结构模拟器，也就是说，本次模拟器的实现并不注重性能和功能的全面性，对于极端复杂和庞大的程序，模拟器的程序会执行缓慢，也有可能会消耗过多内存，对于模拟器本身的性能优化不在本实验的范围内。
+本次模拟器的实现并不是要做一个成熟可用的工业级体系结构模拟器，也就是说，本次模拟器的实现并不注重性能和功能的全面性。在性能上，对于极端复杂和庞大的程序，模拟器的程序会执行缓慢，也有可能会消耗过多内存，对于模拟器本身的性能优化不在本实验的范围内。在功能上，为了实现简单，本模拟器使用自定义的系统调用，而不是符合Linux的系统调用，因此，此模拟器只能运行专门为此编译的RISC-V程序（编写方法参见`test/`文件夹）。
 
-#### 2.3 程序接口描述
+#### 2.3 编译与运行
+
+编译方法与一个典型的CMake项目一样，在编译之前必须先安装CMake。在Linux或者Mac OS X系统上可以采用如下命令
+
+```
+mkdir build
+cd build
+cmake ..
+make
+```
+
+编译会得到可执行程序`Simulator`。该模拟器是一个命令行程序，在命令行上的执行方式是
+
+```
+./Simulator riscv-elf-file-name [-v] [-s] [-d]
+```
+
+其中`riscv-elf-file-name`对应可执行的RISC-V ELF文件，比如`riscv-elf/`文件夹下的所有`*.riscv`文件。一个典型的运行流程和输出如下
+
+```
+hehaodeMacBook-Pro:build hehao$ ./Simulator ../riscv-elf/matrixmulti.riscv 
+The content of A is: 
+0 0 0 
+1 1 1 
+2 2 2 
+The content of B is: 
+0 1 2 
+0 1 2 
+0 1 2 
+The content of C=A*B is: 
+0 0 0 
+0 3 6 
+0 6 12 
+Program exit from an exit system call
+------------ STATISTICS -----------
+Total Number of Instructions Executed: 7496
+-----------------------------------
+```
 
 #### 2.4 代码架构
 
@@ -82,13 +119,40 @@ ackermann.c # 求解Ackermann函数
 
 #### 3.5 调试接口和其它接口等
 
+#### 3.6 分支预测模块的实现
+
 ### 四、功能测试和性能评测
 
 #### 4.1 运行测试程序，给出动态执行的指令数。 （共5个定点程序）
 
+```
+Program exit from an exit system call
+------------ STATISTICS -----------
+Total Number of Instructions Executed: 910
+-----------------------------------
+Program exit from an exit system call
+------------ STATISTICS -----------
+Total Number of Instructions Executed: 935
+-----------------------------------
+Program exit from an exit system call
+------------ STATISTICS -----------
+Total Number of Instructions Executed: 1129
+-----------------------------------
+Program exit from an exit system call
+------------ STATISTICS -----------
+Total Number of Instructions Executed: 19484
+-----------------------------------
+Program exit from an exit system call
+------------ STATISTICS -----------
+Total Number of Instructions Executed: 920
+-----------------------------------
+```
+
 #### 4.2 运行测试程序，给出执行周期数，并计算平均CPI。 （共5个定点程序）
 
 #### 4.3 请你模拟的流水线处理器中因不同类型的冒险而发生的停顿进行统计，并打印数据和分析。 （共5个测试程序）
+
+#### 4.4 分支预测模块评测
 
 ### 五、其它需要说明的内容
 
