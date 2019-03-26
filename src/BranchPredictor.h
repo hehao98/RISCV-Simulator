@@ -1,6 +1,9 @@
 /*
  * The branch perdiction module with the following strategies
- * 
+ *   Always Taken
+ *   Always Not Taken
+ *   Backward Taken, Forward Not Taken
+ *   Branch Prediction Buffer with 2bit history information
  * 
  * Created by He, Hao on 2019-3-25
  */

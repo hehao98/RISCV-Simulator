@@ -13,7 +13,7 @@
 1. 从GitHub上下载了`riscv-tools，`从中针对Linux平台配置，编译和安装了`riscv-gnu-toolchain`。
 2. 为了使用官方模拟器作为参照，从GitHub上下载、编译和安装了`riscv-qemu`。
 
-需要特别注意的是，在编译`riscv-gnu-toolchain`时，必须指定工具链和C语言标准库所使用的指令集为RV64I，否则在编译的时候编译器会使用RV64C、RV64D等扩展指令集。即使设置编译器编译时只使用`RV64I`指令集，编译器也会链接进使用扩展指令集的标准库函数。因此，为了获得只使用RV64I标准指令集的ELF程序，必须在`riscv-gnu-toolchain`中采用如下选项重新编译
+需要特别注意的是，在编译`riscv-gnu-toolchain`时，必须指定工具链和C语言标准库所使用的指令集为RV64I，否则在编译的时候编译器会使用RV64C、RV64D等扩展指令集。即使设置编译器编译时只使用RV64I指令集，编译器也会链接进使用扩展指令集的标准库函数。因此，为了获得只使用RV64I标准指令集的ELF程序，必须在`riscv-gnu-toolchain`中采用如下选项重新编译
 
 ```
 mkdir build; cd build
@@ -60,7 +60,7 @@ ackermann.c       # 求解Ackermann函数
 
 此外，模拟器实现的主要目的是能够被用于简单性能评测，因此必须能够尽可能贴近流水线硬件，并可以扩展出分支预测和缓存模拟等各种功能，便于在真正的程序上实验和评测流水线的性能，以及各种分支预测和缓存模拟策略。
 
-本次模拟器的实现并不是要做一个成熟可用的工业级体系结构模拟器，也就是说，本次模拟器的实现并不注重性能和功能的全面性。在性能上，对于极端复杂和庞大的程序，模拟器的程序会执行缓慢，也有可能会消耗过多内存，对于模拟器本身的性能优化不在本实验的范围内。在功能上，为了实现简单，本模拟器使用自定义的系统调用，而不是符合Linux的系统调用，因此，此模拟器只能运行专门为此编译的RISC-V程序（编写方法参见`test/`文件夹）。
+本次模拟器的实现并不是要做一个成熟可用的工业级体系结构模拟器，也就是说，本次模拟器的实现并不注重性能和功能的全面性。在性能上，对于极端复杂和庞大的程序，模拟器的程序会执行缓慢，也有可能会消耗过多内存，对于模拟器本身的性能优化不在本实验的范围内。在功能上，为了实现简单，本模拟器使用自定义的系统调用，而不是兼容Linux的系统调用，因此，此模拟器只能运行专门为此编译的RISC-V程序（程序源码参见`test/`文件夹）。
 
 #### 2.3 编译与运行
 
@@ -81,7 +81,7 @@ Parameters:
         [-v] verbose output 
         [-s] single step
         [-d] dump memory and register trace to dump.txt
-        [-b param] branch perdiction strategy, accepted param AT, NT, BTFNT
+        [-b param] branch perdiction strategy, accepted param AT, NT, BTFNT, BPB
 ```
 
 其中`riscv-elf-file-name`对应可执行的RISC-V ELF文件，比如`riscv-elf/`文件夹下的所有`*.riscv`文件。一个典型的运行流程和输出如下
@@ -193,7 +193,10 @@ Type d to dump memory in dump.txt, press ENTER to continue:
 ./Simulator ../riscv-elf/ackermann.riscv -b AT
 ./Simulator ../riscv-elf/ackermann.riscv -b NT
 ./Simulator ../riscv-elf/ackermann.riscv -b BTFNT
+./Simulator ../riscv-elf/ackermann.riscv -b BPB
 ```
+
+其中，AT表示Always Taken，NT表示Not Taken，BTFNT表示Back Taken Forward Not Taken，BPB表示Branch Prediction Buffer。
 
 #### 2.4 代码架构
 
@@ -203,19 +206,83 @@ Type d to dump memory in dump.txt, press ENTER to continue:
 
 模拟器本身被设计成一个巨大的类，也就是代码中的`class Simulator`(参见`Simulator.h`、`Simulator.cpp`)。`Simulator`类中的数据包含了PC、通用寄存器、流水线寄存器、执行历史记录器、内存模块和分支预测模块，其中，由于内存模块和分支预测模块相对比较独立，因此实现为独立的两个类`MemoryManager`和`BranchPredictor`。
 
-模拟器中最核心的函数是`simulate()`函数，这个函数对模拟器进行周期级模拟，每次模拟中，会执行`fetch()`、`decode()`、`execute()`、`accessMemory()`和`writeBack()`五个函数，每个函数会以上一个周期的流水线寄存器作为输入，并输出到下一个周期的流水线寄存器。在周期结束时，新的寄存器的内容会被拷贝到作为输入的寄存器中。在执行过程中，每个函数都会处理有关数据、控制和内存访问冒险的内容，并且在适当的地方记录历史信息。
+模拟器中最核心的函数是`simulate()`函数，这个函数对模拟器进行周期级模拟，每次模拟中，会执行`fetch()`、`decode()`、`execute()`、`accessMemory()`和`writeBack()`五个函数，每个函数会以上一个周期的流水线寄存器作为输入，并输出到下一个周期的流水线寄存器。在周期结束时，新的寄存器的内容会被拷贝到作为输入的寄存器中。在执行过程中，每个函数都会处理有关数据、控制和内存访问冒险的内容，并且在适当的地方记录历史信息。由于之间的交互关系比较复杂，因此在上图中并没有画出。
 
 ### 三、具体设计和实现
 
-#### 3.1 可执行文件的装载、初始化和存储接口
+#### 3.1 内存管理模块`MemoryManager`
 
+`MemoryManager`的功能是为模拟器提供一个简单易使用的内存访问接口，必须支持任意内存大小、内存地址的访存，还要能检测到非法内存地址访问。事实上，这非常类似于操作系统中虚拟内存的机制。因此，`MemoryManager`的内部实现采用了类似x86体系结构中使用的二级页表的机制。具体地说，将32位内存空间在逻辑上划分为大小为4KB(2^12)的页，并且采用内存地址的前10位作为一级页表的索引，紧接着10位作为二级页表的索引，最后12位作为一个内存页里的下标。
 
+#### 3.2 可执行文件的装载、初始化
+
+本模拟器的可执行文件加载部分采用了GitHub上的开源库ELFIO(https://github.com/serge1/ELFIO)，由于这个库只有头文件，所以导入工程相当容易，相关头文件在`include/`文件夹下。
+
+使用这个库进行ELF文件加载相当容易
+
+```c
+// Read ELF file
+ELFIO::elfio reader;
+if (!reader.load(elfFile)) {
+  fprintf(stderr, "Fail to load ELF file %s!\n", elfFile);
+  return -1;
+}
+```
+
+加载ELF文件进内存的代码如下，直接按照ELF文件头的信息将每个数据段拷贝到指定的内存位置即可，唯一需要注意的是文件内数据长度可能小于指定的内存长度，需要用0填充。值得一提的是本模拟器在设计时并未考虑支持32位以上的内存，因为内存占用如此之大的用户程序是比较罕见的，在我们用的测试程序中不会出现这种情况。
+
+```c
+void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory) {
+  ELFIO::Elf_Half seg_num = reader->segments.size();
+  for (int i = 0; i < seg_num; ++i) {
+    const ELFIO::segment *pseg = reader->segments[i];
+
+    uint64_t fullmemsz = pseg->get_memory_size();
+    uint64_t fulladdr = pseg->get_virtual_address();
+    // Our 32bit simulator cannot handle this
+    if (fulladdr + fullmemsz > 0xFFFFFFFF) {
+      dbgprintf(
+          "ELF address space larger than 32bit! Seg %d has max addr of 0x%lx\n",
+          i, fulladdr + fullmemsz);
+      exit(-1);
+    }
+
+    uint32_t filesz = pseg->get_file_size();
+    uint32_t memsz = pseg->get_memory_size();
+    uint32_t addr = (uint32_t)pseg->get_virtual_address();
+
+    for (uint32_t p = addr; p < addr + memsz; ++p) {
+      if (!memory->isPageExist(p)) {
+        memory->addPage(p);
+      }
+
+      if (p < addr + filesz) {
+        memory->setByte(p, pseg->get_data()[p - addr]);
+      } else {
+        memory->setByte(p, 0);
+      }
+    }
+  }
+}
+```
+
+最后，需要在模拟器初始化时手动设置PC的值。
+
+```c
+simulator.pc = reader.get_entry();
+```
 
 #### 3.3 指令语义的解析和控制信号的处理
 
+
+
 #### 3.4 系统调用和库函数接口的处理
 
+
+
 #### 3.5 性能计数相关模块的处理
+
+
 
 #### 3.6 调试接口和其它接口等
 
