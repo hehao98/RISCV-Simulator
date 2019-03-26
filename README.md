@@ -2,7 +2,7 @@
 
 A Simple RISC-V CPU Simulator with 5 Stage Pipeline, Branch Prediction and Cache Simulation
 
-This repository contains my solution to Computer Architecture Lab 2-4 at Peking University, Spring 2019. It is a simple RISC-V Emulator suppprting user mode RV64I instruction set. I made my project open source in the hope that others can learn from my code about how to make a CPU Emulator and get a deeper understanding in computer architecture.
+It is a simple RISC-V Emulator suppprting user mode RV64I instruction set, from PKU Computer Architecture Labs, Spring 2019. I made my project open source in the hope that others can learn from my code about how to make a CPU Emulator and get a deeper understanding in computer architecture.
 
 Note that this is just a toy for learning and is NOT a robust and full solution to RISC-V CPU Emulation. Use `qemu` for that purpose instead.
 
@@ -45,7 +45,7 @@ There are a number of reference RISC-V ELFs and its corresponding assembly code 
 
 See the `doc/` folder.
 
-Also, you can see corresponding blogs at ![hehao98.github.io](hehao98.github.io).
+Also, you can see the corresponding [blog](https://hehao98.github.io/posts/2019/03/riscv-simulator/).
 
 
 
