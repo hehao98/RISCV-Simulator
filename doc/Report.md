@@ -122,7 +122,7 @@ Number of Memory Hazards: 47774
 
 在默认的设置下，一开始会首先打印执行的程序的输出，然后会输出一组关于CPU执行情况的统计数据。
 
-如果要进行单步调试的话，可以类似如下使用`-s`和`-v`参数
+如果要进行单步调试的话，可以使用`-s`和`-v`参数
 
 ```
 ./Simulator ../riscv-elf/ackermann.riscv -s -v

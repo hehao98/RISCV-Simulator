@@ -94,6 +94,8 @@ bool parseParameters(int argc, char **argv) {
             strategy = BranchPredictor::Strategy::NT;
           } else if (str == "BTFNT") {
             strategy = BranchPredictor::Strategy::BTFNT;
+          } else if (str == "BPB") {
+            strategy = BranchPredictor::Strategy::BPB;
           } else {
             return false;
           }
@@ -122,7 +124,7 @@ void printUsage() {
   printf("Usage: Simulator riscv-elf-file [-v] [-s] [-d] [-b param]\n");
   printf("Parameters: \n\t[-v] verbose output \n\t[-s] single step\n");
   printf("\t[-d] dump memory and register trace to dump.txt\n");
-  printf("\t[-b param] branch perdiction strategy, accepted param AT, NT, BTFNT\n");
+  printf("\t[-b param] branch perdiction strategy, accepted param AT, NT, BTFNT, BPB\n");
 }
 
 void printElfInfo(ELFIO::elfio *reader) {

@@ -937,6 +937,8 @@ void Simulator::excecute() {
       this->history.unpredictedBranch++;
       this->history.controlHazardCount++;
     }
+    // this->dReg.pc: fetch original inst addr, not the modified one
+    this->branchPredictor->update(this->dReg.pc, branch);
   }
   if (isJump(inst)) {
     // Control hazard here
