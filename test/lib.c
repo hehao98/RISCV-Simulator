@@ -26,3 +26,15 @@ void exit_proc() {
     asm("li a7, 3;"
         "scall");
 }
+
+char read_char()
+{
+    asm("li a7, 4;"
+        "scall");
+}
+
+long long read_num()
+{
+    asm("li a7, 5;"
+        "scall");
+}

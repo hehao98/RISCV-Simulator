@@ -7,4 +7,7 @@ void print_c(char ch);
 
 void exit_proc();
 
+char read_char();
+long long read_num();
+
 #endif
