@@ -2,8 +2,6 @@
 
 ## <center>RISC-V CPU模拟器设计与实现</center>
 
-#### <center>何昊 1600012742</center>	
-
 ### 一、开发环境
 
 #### 1.1 RISC-V环境的安装与配置
