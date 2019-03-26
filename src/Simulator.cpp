@@ -136,6 +136,11 @@ void Simulator::simulate() {
     memset(&this->eRegNew, 0, sizeof(this->eRegNew));
     memset(&this->mRegNew, 0, sizeof(this->mRegNew));
 
+    // The Branch perdiction happens here to avoid strange bugs in branch prediction
+    if (!this->dReg.bubble && !this->dReg.stall && !this->fReg.stall && this->dReg.predictedBranch) {
+      this->pc = this->predictedPC;
+    }
+
     this->history.cycleCount++;
     this->history.regRecord.push_back(this->getRegInfoStr());
     if (this->history.regRecord.size() >= 100000) { // Avoid using up memory
@@ -644,7 +649,11 @@ void Simulator::decode() {
     predictedBranch = this->branchPredictor->predict(this->fReg.pc, insttype,
                                                      op1, op2, offset);
     if (predictedBranch) {
-      this->pc = this->fReg.pc + offset;
+      this->predictedPC = this->fReg.pc + offset;
+      this->anotherPC = this->fReg.pc + 4;
+      this->fRegNew.bubble = true;
+    } else {
+      this->anotherPC = this->fReg.pc + offset;
     }
   }
 
@@ -920,7 +929,7 @@ void Simulator::excecute() {
       this->history.predictedBranch++;
     } else {
       // Control Hazard Here
-      this->pc = dRegPC;
+      this->pc = this->anotherPC;
       this->fRegNew.bubble = true;
       this->dRegNew.bubble = true;
       this->history.unpredictedBranch++;

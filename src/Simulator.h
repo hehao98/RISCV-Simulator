@@ -167,6 +167,8 @@ public:
   bool verbose;
   bool shouldDumpHistory;
   uint64_t pc;
+  uint64_t predictedPC; // for branch prediction module, predicted PC destination
+  uint64_t anotherPC; // // another possible prediction destination
   uint64_t reg[RISCV::REGNUM];
   uint32_t stackBase;
   uint32_t maximumStackSize;
