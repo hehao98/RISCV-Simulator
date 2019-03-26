@@ -276,7 +276,7 @@ private:
   void memoryAccess();
   void writeBack();
 
-  void handleSystemCall(int64_t op1, int64_t op2);
+  int64_t handleSystemCall(int64_t op1, int64_t op2);
 
   std::string getRegInfoStr();
   void panic(const char *format, ...);

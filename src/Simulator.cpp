@@ -540,6 +540,7 @@ void Simulator::decode() {
         op2 = this->reg[REG_A7];
         reg1 = REG_A0;
         reg2 = REG_A7;
+        dest = REG_A0;
         insttype = ECALL;
       } else {
         this->panic("Unknown OP_SYSTEM inst with funct3 0x%x and funct7 0x%x\n",
@@ -917,7 +918,8 @@ void Simulator::excecute() {
     out = int64_t(int32_t((int32_t)op1 >> (int32_t)op2));
     break;
   case ECALL:
-    handleSystemCall(op1, op2);
+    out = handleSystemCall(op1, op2);
+    writeReg = true;
     break;
   default:
     this->panic("Unknown instruction type %d\n", inst);
@@ -1189,9 +1191,9 @@ void Simulator::writeBack() {
   // this->pc = this->mReg.pc;
 }
 
-void Simulator::handleSystemCall(int64_t op1, int64_t op2) {
-  uint32_t type = op2; // reg a7
-  uint32_t arg1 = op1; // reg a0
+int64_t Simulator::handleSystemCall(int64_t op1, int64_t op2) {
+  int64_t type = op2; // reg a7
+  int64_t arg1 = op1; // reg a0
   switch (type) {
   case 0: { // print string
     uint32_t addr = arg1;
@@ -1203,7 +1205,7 @@ void Simulator::handleSystemCall(int64_t op1, int64_t op2) {
     break;
   }
   case 1: // print char
-    printf("%c", arg1);
+    printf("%c", (char)arg1);
     break;
   case 2: // print num
     printf("%d", (int32_t)arg1);
@@ -1218,9 +1220,16 @@ void Simulator::handleSystemCall(int64_t op1, int64_t op2) {
     }
     this->printStatistics();
     exit(0);
+  case 4: // read char
+    scanf(" %c", (char*)&op1);
+    break;
+  case 5: // read num
+    scanf(" %lld", &op1);
+    break;
   default:
     this->panic("Unknown syscall type %d\n", type);
   }
+  return op1;
 }
 
 void Simulator::printInfo() {
