@@ -29,12 +29,18 @@ void exit_proc() {
 
 char read_char()
 {
+    char result;
     asm("li a7, 4;"
         "scall");
+    asm("addi %0, a0, 0" : "=r" (result));
+    return result;
 }
 
 long long read_num()
 {
+    long long result;
     asm("li a7, 5;"
         "scall");
+    asm("addi %0, a0, 0" : "=r" (result));
+    return result;
 }
