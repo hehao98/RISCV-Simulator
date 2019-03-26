@@ -15,7 +15,6 @@
 #include "BranchPredictor.h"
 #include "MemoryManager.h"
 
-
 namespace RISCV {
 
 const int REGNUM = 32;
@@ -145,6 +144,21 @@ inline bool isBranch(Inst inst) {
   return false;
 }
 
+inline bool isJump(Inst inst) {
+  if (inst == JAL || inst == JALR) {
+    return true;
+  }
+  return false;
+}
+
+inline bool isReadMem(Inst inst) {
+  if (inst == LB || inst == LH || inst == LW || inst == LD || inst == LBU ||
+      inst == LHU || inst == LWU) {
+    return true;
+  }
+  return false;
+}
+
 } // namespace RISCV
 
 class Simulator {
@@ -176,7 +190,7 @@ private:
   struct FReg {
     // Control Signals
     bool bubble;
-    bool stall;
+    uint32_t stall;
 
     uint64_t pc;
     uint32_t inst;
@@ -185,7 +199,8 @@ private:
   struct DReg {
     // Control Signals
     bool bubble;
-    bool stall;
+    uint32_t stall;
+    RISCV::RegId rs1, rs2;
 
     uint64_t pc;
     RISCV::Inst inst;
@@ -198,7 +213,7 @@ private:
   struct EReg {
     // Control Signals
     bool bubble;
-    bool stall;
+    uint32_t stall;
 
     uint64_t pc;
     RISCV::Inst inst;
@@ -216,7 +231,7 @@ private:
   struct MReg {
     // Control Signals
     bool bubble;
-    bool stall;
+    uint32_t stall;
 
     uint64_t pc;
     RISCV::Inst inst;
@@ -227,6 +242,13 @@ private:
     RISCV::RegId destReg;
   } mReg, mRegNew;
 
+  // Pipeline Related Variables
+  // To avoid older values(in MEM) overriding newer values(in EX)
+  bool executeWriteBack;
+  RISCV::RegId executeWBReg;
+  bool memoryWriteBack;
+  RISCV::RegId memoryWBReg;
+
   struct History {
     uint32_t instCount;
     uint32_t cycleCount;
@@ -236,12 +258,9 @@ private:
     uint32_t unpredictedBranch; // Number of branch that is not predicted
                                 // successfully
 
-    std::vector<uint32_t>
-        dataHazardAddrs; // Instruction Addresses with data hazard
-    std::vector<uint32_t>
-        controlHazardAddrs; // Instruction Addresses with control hazard
-    std::vector<uint32_t>
-        memoryHazardAddrs; // Instruction Addresses with memory hazard
+    uint32_t dataHazardCount;
+    uint32_t controlHazardCount;
+    uint32_t memoryHazardCount;
 
     std::vector<std::string> instRecord;
     std::vector<std::string> regRecord;
@@ -255,7 +274,7 @@ private:
   void memoryAccess();
   void writeBack();
 
-  void handleSystemCall();
+  void handleSystemCall(int64_t op1, int64_t op2);
 
   std::string getRegInfoStr();
   void panic(const char *format, ...);

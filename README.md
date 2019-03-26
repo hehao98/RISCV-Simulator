@@ -10,7 +10,7 @@ Note that this is just a toy for learning and is NOT a robust and full solution 
 
 1. Supporting 54 RISC-V instructions from the RV64I instruction set.
 2. Branch perdiction module with a set of branch perdicton algorithms.
-3. Simulation of five stage pipeline like that in the "Computer Organization and Design, Hardware/Software Interface" Book(to be done).
+3. Simulation of five stage pipeline like that in the "Computer Organization and Design, Hardware/Software Interface" Book.
 4. Simulation of cache and various cache eviction strategies(to be done).
 5. A custom SIMD extension and its evaluation(to be done).
 
@@ -30,9 +30,9 @@ make
 ```
 Parameters:
 
-1. `-v` for verbose output
-2. `-s` for single step execution, often used in combination with `-v`
-3. `-d` for dumping execution history to `dump.txt`
+1. `-v` for verbose output, can redirect output to file for further analysis
+2. `-s` for single step execution, often used in combination with `-v`.
+3. `-d` for creating memory and register history dump in `dump.txt`
 4. `-b` for branch perdiction strategy (default `BTFNT`), accepted parameters are `AT`, `NT`, `BTFNT`.
    * AT: Always Taken
    * NT: Always Not Taken

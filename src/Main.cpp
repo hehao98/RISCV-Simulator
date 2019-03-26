@@ -27,7 +27,7 @@ bool dumpHistory = 0;
 uint32_t stackBaseAddr = 0x80000000;
 uint32_t stackSize = 0x400000;
 MemoryManager memory;
-BranchPredictor::Strategy strategy = BranchPredictor::Strategy::BTFNT;
+BranchPredictor::Strategy strategy = BranchPredictor::Strategy::NT;
 BranchPredictor branchPredictor;
 Simulator simulator(&memory, &branchPredictor);
 
@@ -121,7 +121,7 @@ bool parseParameters(int argc, char **argv) {
 void printUsage() {
   printf("Usage: Simulator riscv-elf-file [-v] [-s] [-d] [-b param]\n");
   printf("Parameters: \n\t[-v] verbose output \n\t[-s] single step\n");
-  printf("\t[-d] dump execution trace to dump.txt\n");
+  printf("\t[-d] dump memory and register trace to dump.txt\n");
   printf("\t[-b param] branch perdiction strategy, accepted param AT, NT, BTFNT\n");
 }
 
