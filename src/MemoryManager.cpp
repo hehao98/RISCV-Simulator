@@ -211,3 +211,7 @@ bool MemoryManager::isAddrExist(uint32_t addr) {
   }
   return false;
 }
+
+void MemoryManager::setCache(Cache *cache) {
+  this->cache = cache;
+}

@@ -14,6 +14,7 @@
 #include "MemoryManager.h"
 #include "Simulator.h"
 #include "BranchPredictor.h"
+#include "Cache.h"
 
 bool parseParameters(int argc, char **argv);
 void printUsage();
@@ -27,6 +28,7 @@ bool dumpHistory = 0;
 uint32_t stackBaseAddr = 0x80000000;
 uint32_t stackSize = 0x400000;
 MemoryManager memory;
+Cache cache;
 BranchPredictor::Strategy strategy = BranchPredictor::Strategy::NT;
 BranchPredictor branchPredictor;
 Simulator simulator(&memory, &branchPredictor);
