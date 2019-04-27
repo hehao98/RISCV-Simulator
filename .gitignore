@@ -3,3 +3,5 @@
 */.DS_Store
 build/
 .vscode
+cacti/obj_opt
+cacti/cacti
