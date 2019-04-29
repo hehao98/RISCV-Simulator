@@ -1,6 +1,6 @@
 /*
  * Basic cache simulator
- * 
+ *
  * Created by He, Hao on 2019-4-27
  */
 
@@ -16,53 +16,51 @@ class MemoryManager;
 
 class Cache {
 public:
-  enum ReplacementPolicy { LRU, FIFO };
-  enum WritePolicy { WriteThrough, WriteBack };
+  enum ReplacementPolicy { LRU = 0, FIFO = 1 };
+
   struct Policy {
     // In bytes, must be power of 2
     uint32_t cacheSize;
-    uint32_t blockSize; 
-    uint32_t lineSize;
+    uint32_t blockSize;
+    uint32_t blockNum;
     uint32_t associativity;
     ReplacementPolicy replacement;
-    WritePolicy write;
+    bool writeThrough;  // false for write back
+    bool writeAllocate; // false for non write allocate
   };
 
-  struct Line {
+  struct Block {
     bool valid;
     bool modified;
     uint32_t size;
     std::vector<uint8_t> data;
   };
 
+  typedef std::vector<Block> Level;
+
   struct Statistics {
-    uint32_t l1HitCount;
-    uint32_t l1MissCount;
-    uint32_t l2HitCount;
-    uint32_t l2MissCount;
-    uint32_t l3HitCount;
-    uint32_t l3MissCount;
+    std::vector<uint32_t> hitCounts;
+    std::vector<uint32_t> missCounts;
     uint32_t totalCycles;
   };
 
   Cache();
-  // Configure to use one level of cache
-  Cache(MemoryManager *manager, Policy l1Policy);
-  // Configure to use tow level of cache
-  Cache(MemoryManager *manager, Policy l1Policy, Policy l2Policy);
-  // Configure to use three level of cache
-  Cache(MemoryManager *manager, Policy l1Policy, Policy l2Policy, Policy l3Policy);
+  Cache(MemoryManager *manager, std::vector<Policy> policies);
 
   bool inCache(uint32_t addr);
   uint8_t getByte(uint32_t addr);
   bool setByte(uint32_t addr, uint8_t val);
+
+  void printInfo(bool verbose);
+  void printStatistics();
 private:
   MemoryManager *memory;
-  bool useL2, useL3;
-  Policy l1Policy, l2Policy, l3Policy;
-  std::vector<std::vector<Line>> blocksL1;
-  std::vector<std::vector<Line>> blocksL2;
-  std::vector<std::vector<Line>> blocksL3;
+  std::vector<Policy> policies;
+  std::vector<Level> levels;
+
+  bool isPolicyValid(const Policy &policy);
+  Level initCacheLevel(const Policy &policy);
+  bool isPowerOfTwo(uint32_t n);
 };
 
 #endif

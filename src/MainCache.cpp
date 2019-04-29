@@ -8,9 +8,12 @@
 #include <fstream>
 #include <string>
 #include <cstdint>
+#include <vector>
+#include <cstdlib>
 
 #include "MemoryManager.h"
 #include "Cache.h"
+#include "Debug.h"
 
 bool parseParameters(int argc, char **argv);
 void printUsage();
@@ -23,13 +26,24 @@ int main(int argc, char **argv) {
   if (!parseParameters(argc, argv)) {
     return -1;
   }
-
-  Cache::Policy l1Policy;
-
+ 
+  std::vector<Cache::Policy> policies;
+  Cache::Policy policy;
+  policy.cacheSize = 1024;
+  policy.blockSize = 256;
+  policy.blockNum = 4;
+  policy.associativity = 1;
+  policy.replacement = Cache::LRU;
+  policy.writeThrough = true;
+  policy.writeAllocate = true;
+  policies.push_back(policy);
+  
   // Initialize memory and cache
   memory = new MemoryManager();
-  cache = new Cache(memory, l1Policy);
+  cache = new Cache(memory, policies);
   memory->setCache(cache);
+
+  cache->printInfo(true);
 
   // Read and execute trace in cache-trace/ folder
   std::ifstream trace(traceFilePath);
@@ -41,10 +55,21 @@ int main(int argc, char **argv) {
   char type; //'r' for read, 'w' for write
   uint32_t addr;
   while (trace >> type >> std::hex >> addr) {
-    printf("%c %x\n", type, addr);
-
-    
+    //printf("%c %x\n", type, addr);
+    switch (type) {
+      case 'r':
+       cache->getByte(addr);
+      break;
+      case 'w':
+       cache->setByte(addr, 0);
+      break;
+      default:
+      dbgprintf("Illegal type %c\n", type);
+      exit(-1);
+    }
   }
+
+  cache->printStatistics();
 
   delete memory;
   delete cache;
