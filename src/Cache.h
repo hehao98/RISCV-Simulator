@@ -16,27 +16,30 @@ class MemoryManager;
 
 class Cache {
 public:
-  enum ReplacementPolicy { LRU = 0, FIFO = 1 };
-
   struct Policy {
     // In bytes, must be power of 2
     uint32_t cacheSize;
     uint32_t blockSize;
     uint32_t blockNum;
     uint32_t associativity;
-    ReplacementPolicy replacement;
-    bool writeThrough;  // false for write back
-    bool writeAllocate; // false for non write allocate
+    uint32_t hitLatency; // in cycles
   };
 
   struct Block {
     bool valid;
     bool modified;
+    uint32_t tag;
+    uint32_t id;
     uint32_t size;
+    uint32_t lastReference;
     std::vector<uint8_t> data;
+    Block() {}
+    Block(const Block &b)
+        : valid(b.valid), modified(b.modified), tag(b.tag), id(b.id),
+          size(b.size) {
+      data = b.data;
+    }
   };
-
-  typedef std::vector<Block> Level;
 
   struct Statistics {
     std::vector<uint32_t> hitCounts;
@@ -45,22 +48,36 @@ public:
   };
 
   Cache();
-  Cache(MemoryManager *manager, std::vector<Policy> policies);
+  Cache(MemoryManager *manager, Policy policy);
 
   bool inCache(uint32_t addr);
+  uint32_t getBlockId(uint32_t addr);
   uint8_t getByte(uint32_t addr);
-  bool setByte(uint32_t addr, uint8_t val);
+  void setByte(uint32_t addr, uint8_t val);
 
   void printInfo(bool verbose);
   void printStatistics();
-private:
-  MemoryManager *memory;
-  std::vector<Policy> policies;
-  std::vector<Level> levels;
 
-  bool isPolicyValid(const Policy &policy);
-  Level initCacheLevel(const Policy &policy);
+private:
+  uint32_t referenceCounter;
+  MemoryManager *memory;
+  Cache *lowerCache;
+  Policy policy;
+  std::vector<Block> blocks;
+
+  void initCache();
+  void loadBlockFromMemory(uint32_t addr);
+  uint32_t getReplacementBlockId(uint32_t begin, uint32_t end);
+  void writeBlockToMemory(Block &b);
+
+  // Utility Functions
+  bool isPolicyValid();
   bool isPowerOfTwo(uint32_t n);
+  uint32_t log2i(uint32_t val);
+  uint32_t getTag(uint32_t addr);
+  uint32_t getId(uint32_t addr);
+  uint32_t getOffset(uint32_t addr);
+  uint32_t getAddr(Block &b);
 };
 
 #endif

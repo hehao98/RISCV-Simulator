@@ -1,19 +1,19 @@
 /*
  * The main entry point of an cache simulator
- * 
+ *
  * Created by He, Hao at 2019-04-27
  */
 
-#include <iostream>
-#include <fstream>
-#include <string>
 #include <cstdint>
-#include <vector>
 #include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
 
-#include "MemoryManager.h"
 #include "Cache.h"
 #include "Debug.h"
+#include "MemoryManager.h"
 
 bool parseParameters(int argc, char **argv);
 void printUsage();
@@ -26,21 +26,17 @@ int main(int argc, char **argv) {
   if (!parseParameters(argc, argv)) {
     return -1;
   }
- 
-  std::vector<Cache::Policy> policies;
+
   Cache::Policy policy;
   policy.cacheSize = 1024;
   policy.blockSize = 256;
   policy.blockNum = 4;
   policy.associativity = 1;
-  policy.replacement = Cache::LRU;
-  policy.writeThrough = true;
-  policy.writeAllocate = true;
-  policies.push_back(policy);
-  
+  policy.hitLatency = 1;
+
   // Initialize memory and cache
   memory = new MemoryManager();
-  cache = new Cache(memory, policies);
+  cache = new Cache(memory, policy);
   memory->setCache(cache);
 
   cache->printInfo(true);
@@ -55,18 +51,21 @@ int main(int argc, char **argv) {
   char type; //'r' for read, 'w' for write
   uint32_t addr;
   while (trace >> type >> std::hex >> addr) {
-    //printf("%c %x\n", type, addr);
+    // printf("%c %x\n", type, addr);
+    if (!memory->isPageExist(addr))
+      memory->addPage(addr);
     switch (type) {
-      case 'r':
-       cache->getByte(addr);
+    case 'r':
+      cache->getByte(addr);
       break;
-      case 'w':
-       cache->setByte(addr, 0);
+    case 'w':
+      cache->setByte(addr, 0);
       break;
-      default:
+    default:
       dbgprintf("Illegal type %c\n", type);
       exit(-1);
     }
+    cache->printInfo(true);
   }
 
   cache->printStatistics();
@@ -85,6 +84,4 @@ bool parseParameters(int argc, char **argv) {
   return true;
 }
 
-void printUsage() {
-  printf("Usage: CacheSim trace-file\n");
-}
+void printUsage() { printf("Usage: CacheSim trace-file\n"); }
