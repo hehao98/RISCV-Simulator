@@ -18,6 +18,9 @@
 bool parseParameters(int argc, char **argv);
 void printUsage();
 
+bool verbose = false;
+bool isSingleStep = false;
+bool dumpHistory = false;
 const char *traceFilePath;
 MemoryManager *memory = nullptr;
 Cache *cache = nullptr;
@@ -29,9 +32,9 @@ int main(int argc, char **argv) {
 
   Cache::Policy policy;
   policy.cacheSize = 1024;
-  policy.blockSize = 256;
-  policy.blockNum = 4;
-  policy.associativity = 1;
+  policy.blockSize = 32;
+  policy.blockNum = 32;
+  policy.associativity = 8;
   policy.hitLatency = 1;
 
   // Initialize memory and cache
@@ -39,7 +42,7 @@ int main(int argc, char **argv) {
   cache = new Cache(memory, policy);
   memory->setCache(cache);
 
-  cache->printInfo(true);
+  cache->printInfo(false);
 
   // Read and execute trace in cache-trace/ folder
   std::ifstream trace(traceFilePath);
@@ -51,7 +54,7 @@ int main(int argc, char **argv) {
   char type; //'r' for read, 'w' for write
   uint32_t addr;
   while (trace >> type >> std::hex >> addr) {
-    // printf("%c %x\n", type, addr);
+    if (verbose) printf("%c %x\n", type, addr);
     if (!memory->isPageExist(addr))
       memory->addPage(addr);
     switch (type) {
@@ -65,7 +68,13 @@ int main(int argc, char **argv) {
       dbgprintf("Illegal type %c\n", type);
       exit(-1);
     }
-    cache->printInfo(true);
+    
+    if (verbose) cache->printInfo(true);
+
+    if (isSingleStep) {
+      printf("Press Enter to Continue...");
+      getchar();
+    }
   }
 
   cache->printStatistics();
@@ -76,11 +85,33 @@ int main(int argc, char **argv) {
 }
 
 bool parseParameters(int argc, char **argv) {
-  if (argc <= 1) {
-    printUsage();
+  // Read Parameters
+  for (int i = 1; i < argc; ++i) {
+    if (argv[i][0] == '-') {
+      switch (argv[i][1]) {
+      case 'v':
+        verbose = 1;
+        break;
+      case 's':
+        isSingleStep = 1;
+        break;
+      case 'd':
+        dumpHistory = 1;
+        break;
+      default:
+        return false;
+      }
+    } else {
+      if (traceFilePath == nullptr) {
+        traceFilePath = argv[i];
+      } else {
+        return false;
+      }
+    }
+  }
+  if (traceFilePath == nullptr) {
     return false;
   }
-  traceFilePath = argv[1];
   return true;
 }
 

@@ -32,6 +32,7 @@ bool Cache::inCache(uint32_t addr) {
 uint32_t Cache::getBlockId(uint32_t addr) {
   uint32_t tag = this->getTag(addr);
   uint32_t id = this->getId(addr);
+  // printf("0x%x 0x%x 0x%x\n", addr, tag, id);
   // iterate over the given set
   for (uint32_t i = id * policy.associativity;
        i < (id + 1) * policy.associativity; ++i) {
@@ -54,7 +55,7 @@ uint8_t Cache::getByte(uint32_t addr) {
   }
 
   // Else, find the data in memory or other level of cache
-  if (this->lowerCache == nullptr) {
+  if (this->lowerCache != nullptr) {
     // TODO
   } else {
     // Not in cache, load from memory
@@ -85,7 +86,7 @@ void Cache::printInfo(bool verbose) {
   if (verbose) {
     for (int j = 0; j < this->blocks.size(); ++j) {
       const Block &b = this->blocks[j];
-      printf("Block %d: tag 0x%x %s %s (last ref %d)\n", b.id, b.tag,
+      printf("Block %d: tag 0x%x id %d %s %s (last ref %d)\n", j, b.tag, b.id,
              b.valid ? "valid" : "invalid",
              b.modified ? "modified" : "unmodified", b.lastReference);
       //printf("Data: ");
@@ -130,7 +131,7 @@ void Cache::initCache() {
     b.modified = false;
     b.size = policy.blockSize;
     b.tag = 0;
-    b.id = i;
+    b.id = i / policy.associativity;
     b.lastReference = 0;
     b.data = std::vector<uint8_t>(b.size);
   }
@@ -151,7 +152,7 @@ void Cache::loadBlockFromMemory(uint32_t addr) {
   uint32_t mask = ~((1 << bits) - 1);
   uint32_t blockAddrBegin = addr & mask;
   for (uint32_t i = blockAddrBegin; i < blockAddrBegin + blockSize; ++i) {
-    b.data[i] = this->memory->getByte(i);
+    b.data[i - blockAddrBegin] = this->memory->getByte(i);
   }
 
   // Find replace block
@@ -166,7 +167,6 @@ void Cache::loadBlockFromMemory(uint32_t addr) {
 
   b.id = replaceId;
   this->blocks[replaceId] = b;
-  this->printInfo(true); 
 }
 
 uint32_t Cache::getReplacementBlockId(uint32_t begin, uint32_t end) {
