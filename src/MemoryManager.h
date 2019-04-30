@@ -27,7 +27,9 @@ public:
   bool copyFrom(const void *src, uint32_t dest, uint32_t len);
 
   bool setByte(uint32_t addr, uint8_t val);
+  bool setByteNoCache(uint32_t addr, uint8_t val);
   uint8_t getByte(uint32_t addr);
+  uint8_t getByteNoCache(uint32_t addr);
 
   bool setShort(uint32_t addr, uint16_t val);
   uint16_t getShort(uint32_t addr);

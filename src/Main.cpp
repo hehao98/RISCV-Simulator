@@ -28,7 +28,7 @@ bool dumpHistory = 0;
 uint32_t stackBaseAddr = 0x80000000;
 uint32_t stackSize = 0x400000;
 MemoryManager memory;
-Cache cache;
+Cache *cache;
 BranchPredictor::Strategy strategy = BranchPredictor::Strategy::NT;
 BranchPredictor branchPredictor;
 Simulator simulator(&memory, &branchPredictor);
@@ -38,6 +38,17 @@ int main(int argc, char **argv) {
     printUsage();
     exit(-1);
   }
+
+  // Init cache
+  Cache::Policy policy;
+  policy.cacheSize = 2048;
+  policy.blockSize = 64;
+  policy.blockNum = 32;
+  policy.associativity = 8;
+  policy.hitLatency = 1;
+  policy.missLatency = 8;
+  cache = new Cache(&memory, policy);
+  memory.setCache(cache);
 
   // Read ELF file
   ELFIO::elfio reader;
@@ -69,6 +80,7 @@ int main(int argc, char **argv) {
     simulator.dumpHistory();
   }
 
+  delete cache;
   return 0;
 }
 
@@ -202,9 +214,9 @@ void loadElfToMemory(ELFIO::elfio *reader, MemoryManager *memory) {
       }
 
       if (p < addr + filesz) {
-        memory->setByte(p, pseg->get_data()[p - addr]);
+        memory->setByteNoCache(p, pseg->get_data()[p - addr]);
       } else {
-        memory->setByte(p, 0);
+        memory->setByteNoCache(p, 0);
       }
     }
   }

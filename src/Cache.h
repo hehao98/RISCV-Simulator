@@ -23,6 +23,7 @@ public:
     uint32_t blockNum;
     uint32_t associativity;
     uint32_t hitLatency; // in cycles
+    uint32_t missLatency; // in cycles
   };
 
   struct Block {
@@ -42,9 +43,11 @@ public:
   };
 
   struct Statistics {
-    std::vector<uint32_t> hitCounts;
-    std::vector<uint32_t> missCounts;
-    uint32_t totalCycles;
+    uint32_t numRead;
+    uint32_t numWrite;
+    uint32_t numHit;
+    uint32_t numMiss;
+    uint64_t totalCycles;
   };
 
   Cache();
@@ -58,6 +61,7 @@ public:
   void printInfo(bool verbose);
   void printStatistics();
 
+  Statistics statistics;
 private:
   uint32_t referenceCounter;
   MemoryManager *memory;

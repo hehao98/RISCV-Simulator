@@ -66,6 +66,24 @@ bool MemoryManager::setByte(uint32_t addr, uint8_t val) {
     dbgprintf("Byte write to invalid addr 0x%x!\n", addr);
     return false;
   }
+  if (this->cache != nullptr) {
+    this->cache->setByte(addr, val);
+    return true;
+  }
+
+  uint32_t i = this->getFirstEntryId(addr);
+  uint32_t j = this->getSecondEntryId(addr);
+  uint32_t k = this->getPageOffset(addr);
+  this->memory[i][j][k] = val;
+  return true;
+}
+
+bool MemoryManager::setByteNoCache(uint32_t addr, uint8_t val) {
+  if (!this->isAddrExist(addr)) {
+    dbgprintf("Byte write to invalid addr 0x%x!\n", addr);
+    return false;
+  }
+
   uint32_t i = this->getFirstEntryId(addr);
   uint32_t j = this->getSecondEntryId(addr);
   uint32_t k = this->getPageOffset(addr);
@@ -74,6 +92,20 @@ bool MemoryManager::setByte(uint32_t addr, uint8_t val) {
 }
 
 uint8_t MemoryManager::getByte(uint32_t addr) {
+  if (!this->isAddrExist(addr)) {
+    dbgprintf("Byte read to invalid addr 0x%x!\n", addr);
+    return false;
+  }
+  if (this->cache != nullptr) {
+    return this->cache->getByte(addr);
+  }
+  uint32_t i = this->getFirstEntryId(addr);
+  uint32_t j = this->getSecondEntryId(addr);
+  uint32_t k = this->getPageOffset(addr);
+  return this->memory[i][j][k];
+}
+
+uint8_t MemoryManager::getByteNoCache(uint32_t addr) {
   if (!this->isAddrExist(addr)) {
     dbgprintf("Byte read to invalid addr 0x%x!\n", addr);
     return false;
@@ -89,10 +121,8 @@ bool MemoryManager::setShort(uint32_t addr, uint16_t val) {
     dbgprintf("Short write to invalid addr 0x%x!\n", addr);
     return false;
   }
-  uint32_t i = this->getFirstEntryId(addr);
-  uint32_t j = this->getSecondEntryId(addr);
-  uint32_t k = this->getPageOffset(addr);
-  memcpy(&this->memory[i][j][k], &val, 2);
+  this->setByte(addr, val & 0xFF);
+  this->setByte(addr + 1, (val >> 8) & 0xFF);
   return true;
 }
 
@@ -107,10 +137,10 @@ bool MemoryManager::setInt(uint32_t addr, uint32_t val) {
     dbgprintf("Int write to invalid addr 0x%x!\n", addr);
     return false;
   }
-  uint32_t i = this->getFirstEntryId(addr);
-  uint32_t j = this->getSecondEntryId(addr);
-  uint32_t k = this->getPageOffset(addr);
-  memcpy(&this->memory[i][j][k], &val, 4);
+  this->setByte(addr, val & 0xFF);
+  this->setByte(addr + 1, (val >> 8) & 0xFF);
+  this->setByte(addr + 2, (val >> 16) & 0xFF);
+  this->setByte(addr + 3, (val >> 24) & 0xFF);
   return true;
 }
 
@@ -127,10 +157,14 @@ bool MemoryManager::setLong(uint32_t addr, uint64_t val) {
     dbgprintf("Long write to invalid addr 0x%x!\n", addr);
     return false;
   }
-  uint32_t i = this->getFirstEntryId(addr);
-  uint32_t j = this->getSecondEntryId(addr);
-  uint32_t k = this->getPageOffset(addr);
-  memcpy(&this->memory[i][j][k], &val, 8);
+  this->setByte(addr, val & 0xFF);
+  this->setByte(addr + 1, (val >> 8) & 0xFF);
+  this->setByte(addr + 2, (val >> 16) & 0xFF);
+  this->setByte(addr + 3, (val >> 24) & 0xFF);
+  this->setByte(addr + 4, (val >> 32) & 0xFF);
+  this->setByte(addr + 5, (val >> 40) & 0xFF);
+  this->setByte(addr + 6, (val >> 48) & 0xFF);
+  this->setByte(addr + 7, (val >> 56) & 0xFF);
   return true;
 }
 
@@ -212,6 +246,4 @@ bool MemoryManager::isAddrExist(uint32_t addr) {
   return false;
 }
 
-void MemoryManager::setCache(Cache *cache) {
-  this->cache = cache;
-}
+void MemoryManager::setCache(Cache *cache) { this->cache = cache; }

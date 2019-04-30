@@ -9,8 +9,6 @@
 
 #include "Cache.h"
 
-Cache::Cache() { this->memory = nullptr; }
-
 Cache::Cache(MemoryManager *manager, Policy policy) {
   this->referenceCounter = 0;
   this->memory = manager;
@@ -21,12 +19,15 @@ Cache::Cache(MemoryManager *manager, Policy policy) {
     exit(-1);
   }
   this->initCache();
+  this->statistics.numRead = 0;
+  this->statistics.numWrite = 0;
+  this->statistics.numHit = 0;
+  this->statistics.numMiss = 0;
+  this->statistics.totalCycles = 0;
 }
 
 bool Cache::inCache(uint32_t addr) {
-  if (getBlockId(addr) != -1)
-    return true;
-  return false;
+  return getBlockId(addr) != -1 ? true : false;
 }
 
 uint32_t Cache::getBlockId(uint32_t addr) {
@@ -45,16 +46,21 @@ uint32_t Cache::getBlockId(uint32_t addr) {
 
 uint8_t Cache::getByte(uint32_t addr) {
   this->referenceCounter++;
+  this->statistics.numRead++;
 
   // If in cache, return directly
-  int blockId = -1;
+  int blockId;
   if ((blockId = this->getBlockId(addr)) != -1) {
     uint32_t offset = this->getOffset(addr);
+    this->statistics.numHit++;
+    this->statistics.totalCycles += this->policy.hitLatency;
     this->blocks[blockId].lastReference = this->referenceCounter;
     return this->blocks[blockId].data[offset];
   }
 
   // Else, find the data in memory or other level of cache
+  this->statistics.numMiss++;
+  this->statistics.totalCycles += this->policy.missLatency;
   if (this->lowerCache != nullptr) {
     // TODO
   } else {
@@ -63,7 +69,6 @@ uint8_t Cache::getByte(uint32_t addr) {
   }
 
   // The block is in top level cache now, return directly
-  blockId = -1;
   if ((blockId = this->getBlockId(addr)) != -1) {
     uint32_t offset = this->getOffset(addr);
     this->blocks[blockId].lastReference = this->referenceCounter;
@@ -72,16 +77,49 @@ uint8_t Cache::getByte(uint32_t addr) {
     fprintf(stderr, "Error: data not in top level cache!\n");
     exit(-1);
   }
-  return 0; // Control should not reach here
 }
 
-void Cache::setByte(uint32_t addr, uint8_t val) { this->referenceCounter++; }
+void Cache::setByte(uint32_t addr, uint8_t val) { 
+  this->referenceCounter++; 
+  this->statistics.numWrite++;
+
+  // If in cache, write to it directly
+  int blockId;
+  if ((blockId = this->getBlockId(addr)) != -1) {
+    uint32_t offset = this->getOffset(addr);
+    this->statistics.numHit++;
+    this->statistics.totalCycles += this->policy.hitLatency;
+    this->blocks[blockId].modified = true;
+    this->blocks[blockId].lastReference = this->referenceCounter;
+    this->blocks[blockId].data[offset] = val;
+    return;
+  }
+
+  // Else, load the data from cache
+  // TODO: implement bypassing
+  this->statistics.numMiss++;
+  this->statistics.totalCycles += this->policy.missLatency;
+  this->loadBlockFromMemory(addr);
+
+  if ((blockId = this->getBlockId(addr)) != -1) {
+    uint32_t offset = this->getOffset(addr);
+    this->blocks[blockId].modified = true;
+    this->blocks[blockId].lastReference = this->referenceCounter;
+    this->blocks[blockId].data[offset] = val;
+    return;
+  } else {
+    fprintf(stderr, "Error: data not in top level cache!\n");
+    exit(-1);
+  }
+}
 
 void Cache::printInfo(bool verbose) {
   printf("Cache Size: %d bytes\n", this->policy.cacheSize);
   printf("Block Size: %d bytes\n", this->policy.blockSize);
   printf("Block Num: %d\n", this->policy.blockNum);
   printf("Associativiy: %d\n", this->policy.associativity);
+  printf("Hit Latency: %d\n", this->policy.hitLatency);
+  printf("Miss Latency: %d\n", this->policy.missLatency);
 
   if (verbose) {
     for (int j = 0; j < this->blocks.size(); ++j) {
@@ -97,7 +135,14 @@ void Cache::printInfo(bool verbose) {
   }
 }
 
-void Cache::printStatistics() {}
+void Cache::printStatistics() {
+  printf("-------- Statistics ----------\n");
+  printf("Num Read: %d\n", this->statistics.numRead);
+  printf("Num Write: %d\n", this->statistics.numWrite);
+  printf("Num Hit: %d\n", this->statistics.numHit);
+  printf("Num Miss: %d\n", this->statistics.numMiss);
+  printf("Total Cycles: %llu\n", this->statistics.totalCycles);
+}
 
 bool Cache::isPolicyValid() {
   if (!this->isPowerOfTwo(policy.cacheSize)) {
@@ -152,7 +197,7 @@ void Cache::loadBlockFromMemory(uint32_t addr) {
   uint32_t mask = ~((1 << bits) - 1);
   uint32_t blockAddrBegin = addr & mask;
   for (uint32_t i = blockAddrBegin; i < blockAddrBegin + blockSize; ++i) {
-    b.data[i - blockAddrBegin] = this->memory->getByte(i);
+    b.data[i - blockAddrBegin] = this->memory->getByteNoCache(i);
   }
 
   // Find replace block
@@ -165,7 +210,6 @@ void Cache::loadBlockFromMemory(uint32_t addr) {
     this->writeBlockToMemory(replaceBlock);
   }
 
-  b.id = replaceId;
   this->blocks[replaceId] = b;
 }
 
@@ -191,7 +235,7 @@ uint32_t Cache::getReplacementBlockId(uint32_t begin, uint32_t end) {
 void Cache::writeBlockToMemory(Cache::Block &b) {
   uint32_t addrBegin = this->getAddr(b);
   for (uint32_t i = 0; i < b.size; ++i) {
-    this->memory->setByte(addrBegin + i, b.data[i]);
+    this->memory->setByteNoCache(addrBegin + i, b.data[i]);
   }
 }
 

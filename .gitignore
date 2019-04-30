@@ -2,6 +2,8 @@
 .DS_Store
 */.DS_Store
 build/
+cmake-build-debug/
+.idea/
 .vscode
 cacti/obj_opt
 cacti/cacti

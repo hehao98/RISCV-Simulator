@@ -1,5 +1,7 @@
 /*
  * The main entry point of an cache simulator
+ * It takes a memory trace as input, and output CSV file containing miss rate
+ * under various cache configurations
  *
  * Created by He, Hao at 2019-04-27
  */
@@ -30,12 +32,21 @@ int main(int argc, char **argv) {
     return -1;
   }
 
+  // Cache Size: 32 Kb to 32 Mb
+  for (uint32_t cacheSize = 32 * 1024; cacheSize <= 32 * 1024 * 1024;
+       cacheSize *= 2) {
+    for (uint32_t blockSize = 1; blockSize <= cacheSize; blockSize *= 2) {
+      //uint32_t blockNum = 
+    }
+  }
+
   Cache::Policy policy;
-  policy.cacheSize = 1024;
-  policy.blockSize = 32;
+  policy.cacheSize = 2048;
+  policy.blockSize = 64;
   policy.blockNum = 32;
   policy.associativity = 8;
   policy.hitLatency = 1;
+  policy.missLatency = 8;
 
   // Initialize memory and cache
   memory = new MemoryManager();
@@ -54,7 +65,8 @@ int main(int argc, char **argv) {
   char type; //'r' for read, 'w' for write
   uint32_t addr;
   while (trace >> type >> std::hex >> addr) {
-    if (verbose) printf("%c %x\n", type, addr);
+    if (verbose)
+      printf("%c %x\n", type, addr);
     if (!memory->isPageExist(addr))
       memory->addPage(addr);
     switch (type) {
@@ -68,8 +80,9 @@ int main(int argc, char **argv) {
       dbgprintf("Illegal type %c\n", type);
       exit(-1);
     }
-    
-    if (verbose) cache->printInfo(true);
+
+    if (verbose)
+      cache->printInfo(true);
 
     if (isSingleStep) {
       printf("Press Enter to Continue...");
@@ -115,4 +128,7 @@ bool parseParameters(int argc, char **argv) {
   return true;
 }
 
-void printUsage() { printf("Usage: CacheSim trace-file\n"); }
+void printUsage() {
+  printf("Usage: CacheSim trace-file [-s] [-v]\n");
+  printf("Parameters: -s single step, -v verbose output\n");
+}
