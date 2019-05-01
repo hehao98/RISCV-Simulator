@@ -22,7 +22,7 @@ public:
     uint32_t blockSize;
     uint32_t blockNum;
     uint32_t associativity;
-    uint32_t hitLatency; // in cycles
+    uint32_t hitLatency;  // in cycles
     uint32_t missLatency; // in cycles
   };
 
@@ -50,29 +50,32 @@ public:
     uint64_t totalCycles;
   };
 
-  Cache();
-  Cache(MemoryManager *manager, Policy policy);
+  Cache(MemoryManager *manager, Policy policy, Cache *lowerCache = nullptr,
+        bool writeBack = true, bool writeAllocate = true);
 
   bool inCache(uint32_t addr);
   uint32_t getBlockId(uint32_t addr);
-  uint8_t getByte(uint32_t addr);
-  void setByte(uint32_t addr, uint8_t val);
+  uint8_t getByte(uint32_t addr, uint32_t *cycles = nullptr);
+  void setByte(uint32_t addr, uint8_t val, uint32_t *cycles = nullptr);
 
   void printInfo(bool verbose);
   void printStatistics();
 
   Statistics statistics;
+
 private:
   uint32_t referenceCounter;
+  bool writeBack;     // default true
+  bool writeAllocate; // default true
   MemoryManager *memory;
   Cache *lowerCache;
   Policy policy;
   std::vector<Block> blocks;
 
   void initCache();
-  void loadBlockFromMemory(uint32_t addr);
+  void loadBlockFromLowerLevel(uint32_t addr, uint32_t *cycles = nullptr);
   uint32_t getReplacementBlockId(uint32_t begin, uint32_t end);
-  void writeBlockToMemory(Block &b);
+  void writeBlockToLowerLevel(Block &b);
 
   // Utility Functions
   bool isPolicyValid();

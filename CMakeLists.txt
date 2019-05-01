@@ -9,7 +9,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 
 add_executable(
     Simulator 
-    src/Main.cpp 
+    src/MainCPU.cpp 
     src/MemoryManager.cpp 
     src/Simulator.cpp 
     src/BranchPredictor.cpp 
@@ -20,5 +20,12 @@ add_executable(
     CacheSim 
     src/MainCache.cpp 
     src/MemoryManager.cpp 
+    src/Cache.cpp
+)
+
+add_executable(
+    CacheOptimized
+    src/MainCacheOptimization.cpp
+    src/MemoryManager.cpp
     src/Cache.cpp
 )

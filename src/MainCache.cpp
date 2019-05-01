@@ -1,5 +1,5 @@
 /*
- * The main entry point of an cache simulator
+ * The main entry point of single level cache simulator
  * It takes a memory trace as input, and output CSV file containing miss rate
  * under various cache configurations
  *
@@ -19,38 +19,99 @@
 
 bool parseParameters(int argc, char **argv);
 void printUsage();
+void simulateCache(std::ofstream &csvFile, uint32_t cacheSize,
+                   uint32_t blockSize, uint32_t associativity, bool writeBack,
+                   bool writeAllocate);
 
 bool verbose = false;
 bool isSingleStep = false;
-bool dumpHistory = false;
 const char *traceFilePath;
-MemoryManager *memory = nullptr;
-Cache *cache = nullptr;
 
 int main(int argc, char **argv) {
   if (!parseParameters(argc, argv)) {
     return -1;
   }
 
+  // Open CSV file and write header
+  std::ofstream csvFile(std::string(traceFilePath) + ".csv");
+  csvFile << "cacheSize,blockSize,associativity,writeBack,writeAllocate,"
+             "missRate,totalCycles\n";
+
   // Cache Size: 32 Kb to 32 Mb
   for (uint32_t cacheSize = 32 * 1024; cacheSize <= 32 * 1024 * 1024;
        cacheSize *= 2) {
-    for (uint32_t blockSize = 1; blockSize <= cacheSize; blockSize *= 2) {
-      //uint32_t blockNum = 
+    // Block Size: 1 byte to 4096 byte
+    // The maximum block size is imposed by VM page size
+    for (uint32_t blockSize = 1; blockSize <= 4096; blockSize *= 2) {
+      for (uint32_t associativity = 1; associativity <= 32;
+           associativity *= 2) {
+        uint32_t blockNum = cacheSize / blockSize;
+        if (blockNum % associativity != 0)
+          continue;
+
+        simulateCache(csvFile, cacheSize, blockSize, associativity, true, true);
+        simulateCache(csvFile, cacheSize, blockSize, associativity, true, false);
+        simulateCache(csvFile, cacheSize, blockSize, associativity, false, true);
+        simulateCache(csvFile, cacheSize, blockSize, associativity, false, false);
+      }
     }
   }
 
+  printf("Result has been written to %s\n",
+         (std::string(traceFilePath) + ".csv").c_str());
+  csvFile.close();
+  return 0;
+}
+
+bool parseParameters(int argc, char **argv) {
+  // Read Parameters
+  for (int i = 1; i < argc; ++i) {
+    if (argv[i][0] == '-') {
+      switch (argv[i][1]) {
+      case 'v':
+        verbose = 1;
+        break;
+      case 's':
+        isSingleStep = 1;
+        break;
+      default:
+        return false;
+      }
+    } else {
+      if (traceFilePath == nullptr) {
+        traceFilePath = argv[i];
+      } else {
+        return false;
+      }
+    }
+  }
+  if (traceFilePath == nullptr) {
+    return false;
+  }
+  return true;
+}
+
+void printUsage() {
+  printf("Usage: CacheSim trace-file [-s] [-v]\n");
+  printf("Parameters: -s single step, -v verbose output\n");
+}
+
+void simulateCache(std::ofstream &csvFile, uint32_t cacheSize,
+                   uint32_t blockSize, uint32_t associativity, bool writeBack,
+                   bool writeAllocate) {
   Cache::Policy policy;
-  policy.cacheSize = 2048;
-  policy.blockSize = 64;
-  policy.blockNum = 32;
-  policy.associativity = 8;
+  policy.cacheSize = cacheSize;
+  policy.blockSize = blockSize;
+  policy.blockNum = cacheSize / blockSize;
+  policy.associativity = associativity;
   policy.hitLatency = 1;
   policy.missLatency = 8;
 
   // Initialize memory and cache
+  MemoryManager *memory = nullptr;
+  Cache *cache = nullptr;
   memory = new MemoryManager();
-  cache = new Cache(memory, policy);
+  cache = new Cache(memory, policy, nullptr, writeBack, writeAllocate);
   memory->setCache(cache);
 
   cache->printInfo(false);
@@ -59,7 +120,7 @@ int main(int argc, char **argv) {
   std::ifstream trace(traceFilePath);
   if (!trace.is_open()) {
     printf("Unable to open file %s\n", traceFilePath);
-    return -1;
+    exit(-1);
   }
 
   char type; //'r' for read, 'w' for write
@@ -90,45 +151,14 @@ int main(int argc, char **argv) {
     }
   }
 
+  // Output Simulation Results
   cache->printStatistics();
+  float missRate = (float)cache->statistics.numMiss /
+                   (cache->statistics.numHit + cache->statistics.numMiss);
+  csvFile << cacheSize << "," << blockSize << "," << associativity << ","
+          << writeBack << "," << writeAllocate << "," << missRate << ","
+          << cache->statistics.totalCycles << std::endl;
 
-  delete memory;
   delete cache;
-  return 0;
-}
-
-bool parseParameters(int argc, char **argv) {
-  // Read Parameters
-  for (int i = 1; i < argc; ++i) {
-    if (argv[i][0] == '-') {
-      switch (argv[i][1]) {
-      case 'v':
-        verbose = 1;
-        break;
-      case 's':
-        isSingleStep = 1;
-        break;
-      case 'd':
-        dumpHistory = 1;
-        break;
-      default:
-        return false;
-      }
-    } else {
-      if (traceFilePath == nullptr) {
-        traceFilePath = argv[i];
-      } else {
-        return false;
-      }
-    }
-  }
-  if (traceFilePath == nullptr) {
-    return false;
-  }
-  return true;
-}
-
-void printUsage() {
-  printf("Usage: CacheSim trace-file [-s] [-v]\n");
-  printf("Parameters: -s single step, -v verbose output\n");
+  delete memory;
 }

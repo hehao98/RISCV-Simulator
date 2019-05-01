@@ -1021,20 +1021,21 @@ void Simulator::memoryAccess() {
   uint32_t memLen = this->eReg.memLen;
 
   bool good = true;
+  uint32_t cycles = 0;
 
   if (writeMem) {
     switch (memLen) {
     case 1:
-      good = this->memory->setByte(out, op2);
+      good = this->memory->setByte(out, op2, &cycles);
       break;
     case 2:
-      good = this->memory->setShort(out, op2);
+      good = this->memory->setShort(out, op2, &cycles);
       break;
     case 4:
-      good = this->memory->setInt(out, op2);
+      good = this->memory->setInt(out, op2, &cycles);
       break;
     case 8:
-      good = this->memory->setLong(out, op2);
+      good = this->memory->setLong(out, op2, &cycles);
       break;
     default:
       this->panic("Unknown memLen %d\n", memLen);
@@ -1049,36 +1050,39 @@ void Simulator::memoryAccess() {
     switch (memLen) {
     case 1:
       if (readSignExt) {
-        out = (int64_t)this->memory->getByte(out);
+        out = (int64_t)this->memory->getByte(out, &cycles);
       } else {
-        out = (uint64_t)this->memory->getByte(out);
+        out = (uint64_t)this->memory->getByte(out, &cycles);
       }
       break;
     case 2:
       if (readSignExt) {
-        out = (int64_t)this->memory->getShort(out);
+        out = (int64_t)this->memory->getShort(out, &cycles);
       } else {
-        out = (uint64_t)this->memory->getShort(out);
+        out = (uint64_t)this->memory->getShort(out, &cycles);
       }
       break;
     case 4:
       if (readSignExt) {
-        out = (int64_t)this->memory->getInt(out);
+        out = (int64_t)this->memory->getInt(out, &cycles);
       } else {
-        out = (uint64_t)this->memory->getInt(out);
+        out = (uint64_t)this->memory->getInt(out, &cycles);
       }
       break;
     case 8:
       if (readSignExt) {
-        out = (int64_t)this->memory->getLong(out);
+        out = (int64_t)this->memory->getLong(out, &cycles);
       } else {
-        out = (uint64_t)this->memory->getLong(out);
+        out = (uint64_t)this->memory->getLong(out, &cycles);
       }
       break;
     default:
       this->panic("Unknown memLen %d\n", memLen);
     }
   }
+
+  //if (cycles != 0) printf("%d\n", cycles);
+  this->history.cycleCount += cycles;
 
   if (verbose) {
     printf("Memory Access: %s\n", INSTNAME[inst]);
@@ -1260,6 +1264,7 @@ void Simulator::printStatistics() {
   printf("Number of Memory Hazards: %u\n",
          this->history.memoryHazardCount);
   printf("-----------------------------------\n");
+  //this->memory->printStatistics();
 }
 
 std::string Simulator::getRegInfoStr() {
