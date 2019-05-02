@@ -29,3 +29,5 @@ add_executable(
     src/MemoryManager.cpp
     src/Cache.cpp
 )
+
+add_executable(ToDirenoTrace src/ToDirenoTrace.cpp)

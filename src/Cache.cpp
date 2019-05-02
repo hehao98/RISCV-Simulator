@@ -40,6 +40,10 @@ uint32_t Cache::getBlockId(uint32_t addr) {
   // iterate over the given set
   for (uint32_t i = id * policy.associativity;
        i < (id + 1) * policy.associativity; ++i) {
+    if (this->blocks[i].id != id) {
+      fprintf(stderr, "Inconsistent ID in block %d\n", i);
+      exit(-1);
+    }
     if (this->blocks[i].valid && this->blocks[i].tag == tag) {
       return i;
     }

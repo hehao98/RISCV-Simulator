@@ -1,0 +1,1 @@
+./d4-7/dineroIV -l1-usize 32768 -l1-usbsize 64 -l1-ubsize 128 -l1-uassoc 8 -l1-ufetch l -l1-upfdist 1 -l2-usize 262144 -l2-ubsize 128 -l2-usbsize 64 -l2-uassoc 8 -l2-ufetch l -l2-upfdist 1 < cache-trace/01-mcf-gem5-xcg.trace.d4
