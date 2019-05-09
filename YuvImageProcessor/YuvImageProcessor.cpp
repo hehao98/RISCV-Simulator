@@ -81,9 +81,9 @@ int main(int argc, char **argv) {
 
   // Process image in different ways
   measureTime(processYuv, "Basic");
-  // measureTime(processYuvMMX, "MMX");
-  measureTime(processYuvSSE2, "SSE2");
-  measureTime(processYuvAVX, "AVX");
+  measureTime(processYuvMMX, "MMX");
+  // measureTime(processYuvSSE2, "SSE2");
+  // measureTime(processYuvAVX, "AVX");
 
   // Write result to file
   std::ofstream outfile(outFilePath);
@@ -186,8 +186,7 @@ void processYuv() {
       int offset = i * width + j;
       int y = (uint8_t)yuv[offset];
       int u = (uint8_t)yuv[(i / 2) * (width / 2) + (j / 2) + total];
-      int v =
-          (uint8_t)yuv[(i / 2) * (width / 2) + (j / 2) + total + (total / 4)];
+      int v = (uint8_t)yuv[(i / 2) * (width / 2) + (j / 2) + total + (total / 4)];
       int r = 1.164383 * (y - 16) + 1.596027 * (v - 128);
       int g = 1.164383 * (y - 16) - 0.391762 * (u - 128) - 0.812968 * (v - 128);
       int b = 1.164383 * (y - 16) + 2.017232 * (u - 128);
@@ -218,6 +217,25 @@ void processYuv() {
   delete[] data;
 }
 
+/*
+ * YUV and RGB conversion in integer arithmetics
+ */
+#define CLIP(X) ( (X) > 255 ? 255 : (X) < 0 ? 0 : X)
+
+// RGB -> YUV
+#define RGB2Y(R, G, B) CLIP(( (  66 * (R) + 129 * (G) +  25 * (B) + 128) >> 8) +  16)
+#define RGB2U(R, G, B) CLIP(( ( -38 * (R) -  74 * (G) + 112 * (B) + 128) >> 8) + 128)
+#define RGB2V(R, G, B) CLIP(( ( 112 * (R) -  94 * (G) -  18 * (B) + 128) >> 8) + 128)
+
+// YUV -> RGB
+#define C(Y) ( (Y) - 16  )
+#define D(U) ( (U) - 128 )
+#define E(V) ( (V) - 128 )
+
+#define YUV2R(Y, U, V) CLIP(( 298 * C(Y)              + 409 * E(V) + 128) >> 8)
+#define YUV2G(Y, U, V) CLIP(( 298 * C(Y) - 100 * D(U) - 208 * E(V) + 128) >> 8)
+#define YUV2B(Y, U, V) CLIP(( 298 * C(Y) + 516 * D(U)              + 128) >> 8)
+
 void processYuvMMX() {
   int total = width * height;
   Pixel *data = new Pixel[total];
@@ -225,16 +243,12 @@ void processYuvMMX() {
   for (int i = 0; i < height; ++i) {
     for (int j = 0; j < width; ++j) {
       int offset = i * width + j;
-      int y = (uint8_t)yuv[offset];
-      int u = (uint8_t)yuv[(i / 2) * (width / 2) + (j / 2) + total];
-      int v =
-          (uint8_t)yuv[(i / 2) * (width / 2) + (j / 2) + total + (total / 4)];
-      int r = 1.164383 * (y - 16) + 1.596027 * (v - 128);
-      int g = 1.164383 * (y - 16) - 0.391762 * (u - 128) - 0.812968 * (v - 128);
-      int b = 1.164383 * (y - 16) + 2.017232 * (u - 128);
-      data[offset].r = clamp(r, 0, 255);
-      data[offset].g = clamp(g, 0, 255);
-      data[offset].b = clamp(b, 0, 255);
+      uint8_t y = (uint8_t)yuv[offset];
+      uint8_t u = (uint8_t)yuv[(i / 2) * (width / 2) + (j / 2) + total];
+      uint8_t v = (uint8_t)yuv[(i / 2) * (width / 2) + (j / 2) + total + (total / 4)];
+      data[offset].r = YUV2R(y, u, v);
+      data[offset].g = YUV2G(y, u, v);
+      data[offset].b = YUV2B(y, u, v);
     }
   }
 
@@ -243,15 +257,12 @@ void processYuvMMX() {
     for (int i = 0; i < height; ++i) {
       for (int j = 0; j < width; ++j) {
         int offset = i * width + j;
-        int r = data[offset].r * a / 255.0;
-        int g = data[offset].g * a / 255.0;
-        int b = data[offset].b * a / 255.0;
-        int y = 0.256788 * r + 0.504129 * g + 0.097906 * b + 16;
-        int u = -0.148223 * r - 0.290993 * g + 0.439216 * b + 128;
-        int v = 0.439216 * r - 0.367788 * g - 0.071427 * b + 128;
-        result[num][offset] = y;
-        result[num][(i / 2) * (width / 2) + (j / 2) + total] = u;
-        result[num][(i / 2) * (width / 2) + (j / 2) + total + (total / 4)] = v;
+        int32_t r = data[offset].r * a / 255;
+        int32_t g = data[offset].g * a / 255;
+        int32_t b = data[offset].b * a / 255;
+        result[num][offset] = (char)RGB2Y(r, g, b);
+        result[num][(i / 2) * (width / 2) + (j / 2) + total] = (char)RGB2U(r, g, b);
+        result[num][(i / 2) * (width / 2) + (j / 2) + total + (total / 4)] = (char)RGB2V(r, g, b);
       }
     }
   }
