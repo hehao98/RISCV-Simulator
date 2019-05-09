@@ -320,4 +320,73 @@ void processYuvSSE2() {
   delete[] data;
 }
 
-void processYuvAVX() {}
+void processYuvAVX() {
+  int total = width * height;
+  struct Vec {
+    float a[8];
+  } *data = new Vec[total / 2];
+  
+  for (int i = 0; i < height; ++i) {
+    for (int j = 0; j < width; j += 2) {
+      int offset = i * width + j;
+      int uIndex = (i / 2) * (width / 2) + (j / 2) + total;
+      int vIndex = (i / 2) * (width / 2) + (j / 2) + total + (total / 4);
+
+      __m256 zero = _mm256_set1_ps(0.0f);
+      __m256 max = _mm256_set1_ps(255.0f);
+      __m256 t0 =
+          _mm256_set_ps(0.0f, (uint8_t)yuv[vIndex], (uint8_t)yuv[uIndex],
+                        (uint8_t)yuv[offset + 1], 0.0f, (uint8_t)yuv[vIndex],
+                        (uint8_t)yuv[uIndex], (uint8_t)yuv[offset]);
+      __m256 t1 = _mm256_set_ps(0.0f, 128.0f, 128.0f, 16.0f, 0.0f, 128.0f, 128.0f, 16.0f);
+      __m256 t2 = _mm256_sub_ps(t0, t1);
+      __m256 t3 = _mm256_set_ps(0.0f, 1.596027f, 0.0f, 1.164383f, 0.0f, 1.596027f, 0.0f, 1.164383f);
+      __m256 t4 = _mm256_set_ps(0.0f, -0.812968f, -0.391762f, 1.164383f, 0.0f, -0.812968f, -0.391762f, 1.164383f);
+      __m256 t5 = _mm256_set_ps(0.0f, 0.0f, 2.017232f, 1.164383f, 0.0f, 0.0f, 2.017232f, 1.164383f);
+      __m256 sum1 = _mm256_hadd_ps(_mm256_hadd_ps(_mm256_mul_ps(t2, t3), zero), zero);
+      __m256 sum2 = _mm256_hadd_ps(_mm256_hadd_ps(_mm256_mul_ps(t2, t4), zero), zero);
+      __m256 sum3 = _mm256_hadd_ps(_mm256_hadd_ps(_mm256_mul_ps(t2, t5), zero), zero);
+      sum2 = _mm256_permute_ps(sum2, 0b11100001);
+      sum3 = _mm256_permute_ps(sum3, 0b11000110);
+      __m256 rgb = _mm256_add_ps(_mm256_add_ps(sum1, sum2), sum3);
+      rgb = _mm256_max_ps(rgb, zero);
+      rgb = _mm256_min_ps(rgb, max);
+      _mm256_store_ps(data[offset/2].a, rgb);
+    }
+  }
+
+  for (int num = 0; num < NUM_FRAMES; ++num) {
+    int a = num * 3 + 1;
+    for (int i = 0; i < height; ++i) {
+      for (int j = 0; j < width; j += 2) {
+        int offset = i * width + j;
+        int uIndex = (i / 2) * (width / 2) + (j / 2) + total;
+        int vIndex = (i / 2) * (width / 2) + (j / 2) + total + (total / 4);
+
+        __m256 zero = _mm256_set1_ps(0.0f);
+        __m256 t0 = _mm256_set_ps(0.0f, a, a, a, 0.0f, a, a, a);
+        __m256 t1 = _mm256_div_ps(t0, _mm256_set1_ps(255.0f));
+        __m256 rgb = _mm256_mul_ps(t1, _mm256_load_ps(data[offset/2].a));
+        __m256 yc = _mm256_set_ps(0.0f, 0.097906f, 0.504129f, 0.256788f, 0.0f, 0.097906f, 0.504129f, 0.256788f);
+        __m256 uc = _mm256_set_ps(0.0f, 0.439126f, -0.290993f, -0.148223f, 0.0f, 0.439126f, -0.290993f, -0.148223f);
+        __m256 vc = _mm256_set_ps(0.0f, -0.071427f, -0.367788f, 0.439216f, 0.0f, -0.071427f, -0.367788f, 0.439216f);
+        __m256 sum1 = _mm256_hadd_ps(_mm256_hadd_ps(_mm256_mul_ps(rgb, yc), zero), zero);
+        __m256 sum2 = _mm256_hadd_ps(_mm256_hadd_ps(_mm256_mul_ps(rgb, uc), zero), zero);
+        __m256 sum3 = _mm256_hadd_ps(_mm256_hadd_ps(_mm256_mul_ps(rgb, vc), zero), zero);
+        sum2 = _mm256_permute_ps(sum2, 0b11100001);
+        sum3 = _mm256_permute_ps(sum3, 0b11000110);
+        __m256 t2 = _mm256_add_ps(_mm256_add_ps(sum1, sum2), sum3);
+        t2 = _mm256_add_ps(t2,
+                           _mm256_set_ps(0.0f, 128.0f, 128.0f, 16.0f, 0.0f, 128.0f, 128.0f, 16.0f));
+        __m256i t2i = _mm256_cvtps_epi32(t2);
+
+        result[num][offset] = _mm256_extract_epi32(t2i, 0);
+        result[num][uIndex] = _mm256_extract_epi32(t2i, 1);
+        result[num][vIndex] = _mm256_extract_epi32(t2i, 2);
+        result[num][offset + 1] = _mm256_extract_epi32(t2i, 4);   
+      }
+    }
+  }
+
+  delete[] data;
+}
