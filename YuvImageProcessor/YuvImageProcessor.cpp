@@ -6,6 +6,7 @@
  */
 
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -13,6 +14,9 @@
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include <immintrin.h>
+#include <nmmintrin.h>
 
 struct Pixel {
   uint8_t r, g, b, a;
@@ -24,8 +28,14 @@ struct Image {
   struct Pixel *data;
 };
 
+inline float absf(float a) { return a > 0 ? a : -a; }
+
 inline int clamp(int val, int min, int max) {
   return val < min ? min : (val > max ? max : val);
+}
+
+inline void print_mm128(__m128 a) {
+  printf("%f %f %f %f\n", a[0], a[1], a[2], a[3]);
 }
 
 bool parseArguments(int argc, char **argv);
@@ -69,20 +79,20 @@ int main(int argc, char **argv) {
   printf("File length: %zu bytes\n", length);
   printf("Image: %d * %d YUV420 Format\n", width, height);
 
-  // Start processing image
+  // Process image in different ways
   measureTime(processYuv, "Basic");
-  measureTime(processYuvMMX, "MMX");
+  // measureTime(processYuvMMX, "MMX");
   measureTime(processYuvSSE2, "SSE2");
   measureTime(processYuvAVX, "AVX");
 
-  // output result
+  // Write result to file
   std::ofstream outfile(outFilePath);
   for (int i = 0; i < NUM_FRAMES; ++i) {
     outfile.write(result[i], length);
   }
   outfile.close();
 
-  // release data structures
+  // Release data structures
   delete yuv;
   for (int i = 0; i < NUM_FRAMES; ++i) {
     delete result[i];
@@ -169,7 +179,7 @@ void measureTime(void func(), const char *desc) {
  */
 void processYuv() {
   int total = width * height;
-  Pixel *data = new Pixel[height * width];
+  Pixel *data = new Pixel[total];
 
   for (int i = 0; i < height; ++i) {
     for (int j = 0; j < width; ++j) {
@@ -210,7 +220,7 @@ void processYuv() {
 
 void processYuvMMX() {
   int total = width * height;
-  Pixel *data = new Pixel[height * width];
+  Pixel *data = new Pixel[total];
 
   for (int i = 0; i < height; ++i) {
     for (int j = 0; j < width; ++j) {
@@ -249,6 +259,65 @@ void processYuvMMX() {
   delete[] data;
 }
 
-void processYuvSSE2() {}
+void processYuvSSE2() {
+  int total = width * height;
+  struct Vec {
+    float a[4];
+  } *data = new Vec[total];
+
+  for (int i = 0; i < height; ++i) {
+    for (int j = 0; j < width; ++j) {
+      int offset = i * width + j;
+      int uIndex = (i / 2) * (width / 2) + (j / 2) + total;
+      int vIndex = (i / 2) * (width / 2) + (j / 2) + total + (total / 4);
+
+      __m128 t0 = _mm_set_ps(0.0f, (uint8_t)yuv[vIndex], (uint8_t)yuv[uIndex],
+                             (uint8_t)yuv[offset]);
+      __m128 t1 = _mm_sub_ps(t0, _mm_set_ps(0.0f, 128.0f, 128.0f, 16.0f));
+      __m128 t2 = _mm_set_ps(0.0f, 1.596027f, 0.0f, 1.164383f);
+      __m128 t3 = _mm_set_ps(0.0f, -0.812968f, -0.391762f, 1.164383f);
+      __m128 t4 = _mm_set_ps(0.0f, 0.0f, 2.017232f, 1.164383f);
+      __m128 t5 = _mm_dp_ps(t1, t2, 0b11110001);
+      __m128 t6 = _mm_dp_ps(t1, t3, 0b11110010);
+      __m128 t7 = _mm_dp_ps(t1, t4, 0b11110100);
+      __m128 rgb = _mm_add_ps(_mm_add_ps(t5, t6), t7);
+      __m128 zero = _mm_set_ps(0.0f, 0.0f, 0.0f, 0.0f);
+      __m128 max = _mm_set_ps(255.0f, 255.0f, 255.0f, 255.0f);
+      rgb = _mm_max_ps(rgb, zero);
+      rgb = _mm_min_ps(rgb, max);
+      _mm_store_ps(data[offset].a, rgb);
+    }
+  }
+
+  for (int num = 0; num < NUM_FRAMES; ++num) {
+    int a = num * 3 + 1;
+    for (int i = 0; i < height; ++i) {
+      for (int j = 0; j < width; ++j) {
+        int offset = i * width + j;
+        int uIndex = (i / 2) * (width / 2) + (j / 2) + total;
+        int vIndex = (i / 2) * (width / 2) + (j / 2) + total + (total / 4);
+
+        __m128 t0 = _mm_set_ps(0.0f, a, a, a);
+        __m128 t1 = _mm_div_ps(t0, _mm_set_ps(255.0f, 255.0f, 255.0f, 255.0f));
+        __m128 rgb = _mm_mul_ps(t1, _mm_load_ps(data[offset].a));
+        __m128 yc = _mm_set_ps(0.0f, 0.097906f, 0.504129f, 0.256788f);
+        __m128 uc = _mm_set_ps(0.0f, 0.439126f, -0.290993f, -0.148223f);
+        __m128 vc = _mm_set_ps(0.0f, -0.071427f, -0.367788f, 0.439216f);
+        __m128 y = _mm_dp_ps(rgb, yc, 0b11110001);
+        __m128 u = _mm_dp_ps(rgb, uc, 0b11110010);
+        __m128 v = _mm_dp_ps(rgb, vc, 0b11110100);
+        __m128 t2 = _mm_add_ps(_mm_add_ps(y, _mm_add_ps(u, v)),
+                               _mm_set_ps(0.0f, 128.0f, 128.0f, 16.0f));
+        __m128i t2i = _mm_cvtps_epi32(t2);
+
+        result[num][offset] = _mm_extract_epi32(t2i, 0);
+        result[num][uIndex] = _mm_extract_epi32(t2i, 1);
+        result[num][vIndex] = _mm_extract_epi32(t2i, 2);
+      }
+    }
+  }
+
+  delete[] data;
+}
 
 void processYuvAVX() {}
