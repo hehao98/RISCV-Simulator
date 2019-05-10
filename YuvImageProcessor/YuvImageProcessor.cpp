@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -40,7 +41,7 @@ inline void print_mm128(__m128 a) {
 
 bool parseArguments(int argc, char **argv);
 void printUsage();
-void measureTime(void func(), const char *desc);
+void measureTime(void func(), const char *desc, bool writeToFile);
 void processYuv();
 void processYuvInt();
 void processYuvMMX();
@@ -54,6 +55,11 @@ int height = 0;
 char *yuv;
 const int NUM_FRAMES = 84;
 char *result[NUM_FRAMES];
+bool writeToFileBasic = false;
+bool writeToFileInt = false;
+bool writeToFileMMX = false;
+bool writeToFileSSE2 = false;
+bool writeToFileAVX = false;
 
 int main(int argc, char **argv) {
   if (!parseArguments(argc, argv)) {
@@ -81,18 +87,11 @@ int main(int argc, char **argv) {
   printf("Image: %d * %d YUV420 Format\n", width, height);
 
   // Process image in different ways
-  measureTime(processYuv, "Basic");
-  measureTime(processYuvInt, "Int");
-  measureTime(processYuvMMX, "MMX");
-  measureTime(processYuvSSE2, "SSE2");
-  measureTime(processYuvAVX, "AVX");
-
-  // Write result to file
-  std::ofstream outfile(outFilePath);
-  for (int i = 0; i < NUM_FRAMES; ++i) {
-    outfile.write(result[i], length);
-  }
-  outfile.close();
+  measureTime(processYuv, "Basic", writeToFileBasic);
+  measureTime(processYuvInt, "Int", writeToFileInt);
+  measureTime(processYuvMMX, "MMX", writeToFileMMX);
+  measureTime(processYuvSSE2, "SSE2", writeToFileSSE2);
+  measureTime(processYuvAVX, "AVX", writeToFileAVX);
 
   // Release data structures
   delete yuv;
@@ -126,7 +125,22 @@ bool parseArguments(int argc, char **argv) {
         }
         break;
       case 'o':
-        if (i + 1 < argc) {
+        if (i + 2 < argc) {
+          std::string type = argv[++i];
+          for (auto & c: type) c = toupper(c);
+          if (type == "BASIC") {
+            writeToFileBasic = true;
+          } else if (type == "INT") {
+            writeToFileInt = true;
+          } else if (type == "MMX") {
+            writeToFileMMX = true;
+          } else if (type == "SSE2") {
+            writeToFileSSE2 = true;
+          } else if (type == "AVX") {
+            writeToFileAVX = true;
+          } else {
+            return false;
+          }
           outFilePath = argv[++i];
         } else {
           return false;
@@ -152,20 +166,31 @@ bool parseArguments(int argc, char **argv) {
 void printUsage() {
   fprintf(
       stderr,
-      "Usage: YuvImageProcessor yuv-file -w width -h height -o output-file\n");
+      "Usage: YuvImageProcessor yuv-file -w width -h height -o isa-type output-file\n");
   fprintf(stderr, "Parameters: yuv-file the path to the input yuv file\n");
   fprintf(stderr, "            -w width the image width of the yuv file\n");
   fprintf(stderr, "            -h height the image height of the yuv file\n");
-  fprintf(stderr, "            -o output-file the path to output file\n");
+  fprintf(stderr, "            -o isa output-file [isa-type] can be Int, Basic, MMX, SSE2, AVX\n");
+  fprintf(stderr, "                               [output-file] is the path to output file\n");
 }
 
-void measureTime(void func(), const char *desc) {
+void measureTime(void func(), const char *desc, bool writeToFile) {
   auto start = std::chrono::high_resolution_clock::now();
   func();
   auto finish = std::chrono::high_resolution_clock::now();
   auto interval =
       std::chrono::duration_cast<std::chrono::milliseconds>(finish - start);
   printf("%s: \t%lldms\n", desc, interval.count());
+
+  if (writeToFile) {
+    // Write result to file
+    std::ofstream outfile(outFilePath);
+    for (int i = 0; i < NUM_FRAMES; ++i) {
+      outfile.write(result[i], width * height * 6 / 4);
+    }
+    outfile.close();
+    printf("The result of %s implementation has been written to %s\n", desc, outFilePath);
+  }
 }
 
 /*
