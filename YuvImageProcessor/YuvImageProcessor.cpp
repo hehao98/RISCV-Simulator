@@ -42,6 +42,7 @@ bool parseArguments(int argc, char **argv);
 void printUsage();
 void measureTime(void func(), const char *desc);
 void processYuv();
+void processYuvInt();
 void processYuvMMX();
 void processYuvSSE2();
 void processYuvAVX();
@@ -81,9 +82,10 @@ int main(int argc, char **argv) {
 
   // Process image in different ways
   measureTime(processYuv, "Basic");
+  measureTime(processYuvInt, "Int");
   measureTime(processYuvMMX, "MMX");
-  // measureTime(processYuvSSE2, "SSE2");
-  // measureTime(processYuvAVX, "AVX");
+  measureTime(processYuvSSE2, "SSE2");
+  measureTime(processYuvAVX, "AVX");
 
   // Write result to file
   std::ofstream outfile(outFilePath);
@@ -236,7 +238,7 @@ void processYuv() {
 #define YUV2G(Y, U, V) CLIP(( 298 * C(Y) - 100 * D(U) - 208 * E(V) + 128) >> 8)
 #define YUV2B(Y, U, V) CLIP(( 298 * C(Y) + 516 * D(U)              + 128) >> 8)
 
-void processYuvMMX() {
+void processYuvInt() {
   int total = width * height;
   Pixel *data = new Pixel[total];
 
@@ -263,6 +265,64 @@ void processYuvMMX() {
         result[num][offset] = (char)RGB2Y(r, g, b);
         result[num][(i / 2) * (width / 2) + (j / 2) + total] = (char)RGB2U(r, g, b);
         result[num][(i / 2) * (width / 2) + (j / 2) + total + (total / 4)] = (char)RGB2V(r, g, b);
+      }
+    }
+  }
+
+  delete[] data;
+}
+
+void processYuvMMX() {
+  int total = width * height;
+  union Vec {
+    uint16_t a[4];
+    __m64 val;
+  } *data = new Vec[total];
+
+  for (int i = 0; i < height; ++i) {
+    for (int j = 0; j < width; ++j) {
+      int offset = i * width + j;
+      int uIndex = (i / 2) * (width / 2) + (j / 2) + total;
+      int vIndex = (i / 2) * (width / 2) + (j / 2) + total + (total / 4);
+      uint8_t y = (uint8_t)yuv[offset];
+      uint8_t u = (uint8_t)yuv[uIndex];
+      uint8_t v = (uint8_t)yuv[vIndex];
+      __m64 c1 = _mm_set_pi16(0, 128, 128, 16);
+      __m64 c2 = _mm_set_pi16(0, 409, 0, 298);
+      __m64 c3 = _mm_set_pi16(0, -208, -100, 298);
+      __m64 c4 = _mm_set_pi16(0, 0, 516, 298);
+      __m64 t0 = _mm_sub_pi16(_mm_set_pi16(0, v, u, y), c1);
+      __m64 t1 = _mm_madd_pi16(t0, c2);
+      __m64 t2 = _mm_madd_pi16(t0, c3);
+      __m64 t3 = _mm_madd_pi16(t0, c4);
+      int t4 = CLIP(((_mm_cvtsi64_si32(t3) + int(_mm_cvtm64_si64(t3)>>32)) + 128) >> 8);
+      int t5 = CLIP(((_mm_cvtsi64_si32(t2) + int(_mm_cvtm64_si64(t2)>>32)) + 128) >> 8);
+      int t6 = CLIP(((_mm_cvtsi64_si32(t1) + int(_mm_cvtm64_si64(t1)>>32)) + 128) >> 8);
+      data[offset].val = _mm_set_pi16(0, t4, t5, t6);
+    }
+  }
+
+  for (int num = 0; num < NUM_FRAMES; ++num) {
+    int a = num * 3 + 1;
+    for (int i = 0; i < height; ++i) {
+      for (int j = 0; j < width; ++j) {
+        int offset = i * width + j;
+        int uIndex = (i / 2) * (width / 2) + (j / 2) + total;
+        int vIndex = (i / 2) * (width / 2) + (j / 2) + total + (total / 4);
+        __m64 rgb = _mm_srl_pi16(_mm_mullo_pi16(data[offset].val, _mm_set1_pi16(a)), _mm_set_pi32(0, 8));
+        __m64 c1 = _mm_set_pi16(0, 25, 129, 66);
+        __m64 c2 = _mm_set_pi16(0, 112, -74, -38);
+        __m64 c3 = _mm_set_pi16(0, -18, -94, 112);
+        __m64 t1 = _mm_madd_pi16(rgb, c1);
+        __m64 t2 = _mm_madd_pi16(rgb, c2);
+        __m64 t3 = _mm_madd_pi16(rgb, c3);
+        int t4 = (((_mm_cvtsi64_si32(t1) + int(_mm_cvtm64_si64(t1)>>32)) + 128) >> 8) + 16;
+        int t5 = (((_mm_cvtsi64_si32(t2) + int(_mm_cvtm64_si64(t2)>>32)) + 128) >> 8) + 128;
+        int t6 = (((_mm_cvtsi64_si32(t3) + int(_mm_cvtm64_si64(t3)>>32)) + 128) >> 8) + 128;
+
+        result[num][offset] = t4;
+        result[num][uIndex] = t5;
+        result[num][vIndex] = t6;
       }
     }
   }
