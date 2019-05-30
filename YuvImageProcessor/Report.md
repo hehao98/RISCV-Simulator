@@ -39,7 +39,7 @@ $$
 2. 由于大多数CPU的整数运算比浮点运算快，加之YUV与RGB之间的转换对精度要求不高，因此也是可以用整数运算实现的(https://stackoverflow.com/questions/1737726/how-to-perform-rgb-yuv-conversion-in-c-c)。
 3. MMX指令集是比较老的SIMD指令集，只支持整数运算，因此只能用于并行化整数运算的版本。在实现中，使用了此外，由于MMX指令集的寄存器大小为64位，在转换过程中，点积运算后所得到的结果无法并行，因为如果用16位整数储存结果会导致溢出，无法得到正确的转换结果，这限制了算法的性能提升。
 4. SSE指令集可以对128位SIMD寄存器进行操作，也就是可以同时对4个32位浮点数进行运算，从而只需直接将计算翻译成SIMD指令即可。此外，SSE还提供了向量点积的计算指令和向量重排指令，从而减少了实现相同运算所需要的指令数。
-5. AVX指令集将SIMD寄存器的位数扩展到256位，那么潜在地就可以一条指令同时计算8个32位浮点数。那么，为了能够充分利用256位的寄存器，必须将算法修改成能一次性计算8个数据的版本。因此，我采用了类似循环转开的思路，每轮循环计算两个$(Y, U, V)$向量和$(R, G, B)​$向量。
+5. AVX指令集将SIMD寄存器的位数扩展到256位，那么潜在地就可以一条指令同时计算8个32位浮点数。那么，为了能够充分利用256位的寄存器，必须将算法修改成能一次性计算8个数据的版本。因此，我采用了类似循环转开的思路，每轮循环计算两个$(Y, U, V)$向量和$(R, G, B)$向量。
 
 ### 2. 程序运行结果
 
@@ -72,6 +72,144 @@ $$
 总而言之，SIMD指令集对图像处理应用程序的优化还是非常显著的。采用AVX指令集的算法和Basic FP相比，性能提升了3.182倍。
 
 ## 二、设计自定义扩展指令对SIMD应用优化并分析
+
+### 1. 需要实现的指令集
+
+本实验的目标是设计若干32位宽的扩展指令，支持8个宽度为256位的SIMD指令专用寄存器，支持8/16/32位pack、unpack计算，支持加/减/乘法，支持饱和计算，支持必要的数据传输指令。
+
+### 2. 指令助记符及其功能
+
+8个256位SIMD寄存器分别用v0, v2, …, v7表示。在下面的表格中，用`vn`表示一个SIMD寄存器，用`rn`表示任意一个64位通用寄存器。
+
+| 指令         | 功能                                    |
+| ------------ | --------------------------------------- |
+| `lv vn, rx, ry` | 将从地址`rn`开始的`ry`个字节读入`vn`(`ry`取值1到32)，其余部分填0 |
+| `sv vn, rx, ry` | 将`vn`里的前`ry`个字节存入地址`rn`开始的`ry`个字节处(`ry`取值1到32) |
+| `addvi32p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 32位整数相加 |
+| `addvi32ps vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 32位整数饱和相加 |
+| `addvi64p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 64位整数相加 |
+| `addvi64ps vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 64位整数饱和相加 |
+| `addvf32p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 32位浮点数相加 |
+| `addvf64p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 64位浮点数相加 |
+| `subvi32p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 32位整数相减 |
+| `subvi32ps vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 32位整数饱和相减 |
+| `subvi64p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 64位整数相减 |
+| `subvi64ps vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 64位整数饱和相减 |
+| `subvf32p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 32位浮点数相减 |
+| `subvf64p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 64位浮点数相减 |
+| `mulvi32p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 32位整数相乘 |
+| `mulvi32ps vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 32位整数饱和相乘 |
+| `mulvi64p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 64位整数相乘 |
+| `mulvi64ps vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 64位整数饱和相乘 |
+| `mulvf32p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 32位浮点数相乘 |
+| `mulvf64p vn, vx, vy` | 将`vx`和`vy`寄存器内的值按packed 64位浮点数相乘 |
+| `unpckvf32hi vn, vx, vy` | 对`vx`和`vy`寄存器内的高4个32位浮点数进行unpack操作，结果存于`vn` |
+| `unpckvf32lo vn, vx, vy` | 对`vx`和`vy`寄存器内的低4个32位浮点数进行unpack操作，结果存于`vn` |
+| `unpckvf64hi vn, vx, vy` | 对`vx`和`vy`寄存器内的高2个64位浮点数进行unpack操作，结果存于`vn` |
+| `unpckvf64lo vn, vx, vy` | 对`vx`和`vy`寄存器内的低2个64位浮点数进行unpack操作，结果存于`vn` |
+| `sumvf64 vn, vx, rx` | 将`vx`寄存器的4个64位浮点数求和，存于`vn`寄存器的第`rx`个位置(`rx`必须取0-3)|
+| `minvf64 vn, vx, vy` | 将`vx`寄存器的4个64位浮点数和`vy`寄存器的4个64位浮点数比较，存较大值于`vn`的相应位置|
+| `minvf64 vn, vx, vy` | 将`vx`寄存器的4个64位浮点数和`vy`寄存器的4个64位浮点数比较，存较小值于`vn`的相应位置|
+
+
+
+上述指令已经符合前述要求，且足够实现前述的图像处理算法。可以很容易添加实现更多功能的SIMD指令。
+
+
+### 3. 指令编码
+
+
+
+### 4. 重新编写的图像计算核心函数
+
+下面写出的代码假设上述设计的指令集已经类似Intel Intrinsics那样在C语言内提供了封装对应指令的函数，函数名就是指令名，函数参数就是指令需要的参数，8个SIMD寄存器变量是全局变量，命名分别为v0, v1, …, v7。
+
+```c
+void processYuvRISCV() {
+  int total = width * height;
+  struct Vec {
+    double a[4];
+  } *data = new Vec[total];
+
+  for (int i = 0; i < height; ++i) {
+    for (int j = 0; j < width; ++j) {
+      int offset = i * width + j;
+      int uIndex = (i / 2) * (width / 2) + (j / 2) + total;
+      int vIndex = (i / 2) * (width / 2) + (j / 2) + total + (total / 4);
+      double zero[4] = {0, 0, 0, 0};
+      double max[4] = {255, 255, 255, 255};
+      double t0[4] = {(uint8_t)yuv[offset], (uint8_t)yuv[uIndex], 
+                      (uint8_t)yuv[vIndex], 0.0};
+      double t1[4] = {16.0, 128.0, 128.0, 0.0}
+      double t2[4] = {1.164383, 0.0, 1.596027, 0.0};
+      double t3[4] = {1.164383, -0.391762, -0.812968, 0.0};
+      double t4[4] = {1.164384, 2.017232, 0.0, 0.0};
+      lv(v0, t0, 32);
+      lv(v1, t1, 32);
+      subvf64p(v1, v0, v1);
+      lv(v2, t2, 32);
+      lv(v3, t3, 32);
+      lv(v4, t4, 32);
+      mulvf64p(v2, v1, v2);
+      mulvf64p(v3, v1, v3);
+      mulvf64p(v4, v1, v4);
+      lv(v5, zero, 32);
+      sumvf64(v5, v2, 0);
+      sumvf64(v5, v3, 1);
+      sumvf64(v5, v4, 2);
+      lv(v6, max, 32);
+      lv(v7, zero, 32);
+      minvf64(v5, v5, v6);
+      maxvf64(v5, v5, v7);
+      sv(v5, data[offset].a, 32);
+    }
+  }
+
+  for (int num = 0; num < NUM_FRAMES; ++num) {
+    int a = num * 3 + 1;
+    for (int i = 0; i < height; ++i) {
+      for (int j = 0; j < width; ++j) {
+        int offset = i * width + j;
+        int uIndex = (i / 2) * (width / 2) + (j / 2) + total;
+        int vIndex = (i / 2) * (width / 2) + (j / 2) + total + (total / 4);
+        double t0[4] = {a / 255, a / 255, a / 255, 0.0};
+        double yc[4] = {0.256788, 0.504129, 0.097906, 0.0};
+        double uc[4] = {-0.148223, 0.290993, 0.439126, 0.0};
+        double vc[4] = {0.439126, -0.367788, -0.071427, 0.0};
+        double t2[4] = {16, 128, 128, 0};
+        double zero[4] = {0, 0, 0, 0};
+        double t3[4];
+        lv(v0, t0, 32);
+        lv(v1, data[offset].a, 24);
+        lv(v2, yc, 32);
+        lv(v3, uc, 32);
+        lv(v4, vc, 32);
+        mulvf64p(v2, v1, v2);
+        mulvf64p(v3, v1, v2);
+        mulvf64p(v4, v1, v2);
+        lv(v5, zero, 32);
+        sumvf64(v5, v2, 0);
+        sumvf64(v5, v3, 1);
+        sumvf64(v5, v4, 2);
+        lv(v6, t2, 32);
+        subvf64p(v5, v5, v6);
+        sv(v5, t3, 32);
+        result[num][offset] = (int)t3[0];
+        result[num][uIndex] = (int)t3[1];
+        result[num][vIndex] = (int)t3[2];
+      }
+    }
+  }
+
+  delete[] data;
+}
+```
+
+### 5. 性能分析
+
+由于无法确切得知使用SIMD计算能够减少使用的确切指令数，因此只能对其性能提升做估算。在上述程序中，使用的SIMD指令共有33条，每条SIMD指令同时对4个64位浮点数做操作。如果不使用SIMD实现，那么每条SIMD指令需要用4倍数量的指令来实现，那么对于每个像素点，使用SIMD指令可以潜在少执行$33*(4-1)=99$条指令。对于$1920\times 1080$大小的图像，共可以减少$99\times 1920\times 1080=2.0529\times 10^8$条指令。
+
+对于每个循环而言，循环体中不是所有指令都是SIMD指令，SIMD计算之外的开销对于两个版本的实现是一样的，因此理论性能提升幅度接近4倍，但会比4倍小。
 
 ## 附录
 
