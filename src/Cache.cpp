@@ -277,7 +277,7 @@ bool Cache::isPowerOfTwo(uint32_t n) { return n > 0 && (n & (n - 1)) == 0; }
 
 uint32_t Cache::log2i(uint32_t val) {
   if (val == 0)
-    return UINT_MAX;
+    return uint32_t(-1);
   if (val == 1)
     return 0;
   uint32_t ret = 0;
