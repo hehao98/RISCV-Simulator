@@ -11,8 +11,7 @@ Note that this is just a toy for learning and is NOT a robust and full solution 
 1. Supporting 54 RISC-V instructions from the RV64I instruction set.
 2. Branch perdiction module with a set of branch perdicton algorithms.
 3. Simulation of five stage pipeline like that in the "Computer Organization and Design, Hardware/Software Interface" Book.
-4. Simulation of cache and various cache eviction strategies(to be done).
-5. A custom SIMD extension and its evaluation(to be done).
+4. Simulation of cache and various cache eviction strategies.
 
 ## Compile
 
