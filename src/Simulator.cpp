@@ -271,6 +271,17 @@ void Simulator::decode() {
           this->panic("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
         }
         break;
+      case 0x3: // sltu
+        if (funct7 == 0x00)
+        {
+          instname = "sltu";
+          insttype = SLTU;
+        }
+        else
+        {
+          this->panic("Unknown funct7 0x%x for funct3 0x%x\n", funct7, funct3);
+        }
+        break;
       case 0x4: // xor div
         if (funct7 == 0x00) {
           instname = "xor";
