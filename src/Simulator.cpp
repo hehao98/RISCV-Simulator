@@ -138,7 +138,7 @@ void Simulator::simulate() {
 
     // The Branch perdiction happens here to avoid strange bugs in branch prediction
     if (!this->dReg.bubble && !this->dReg.stall && !this->fReg.stall && this->dReg.predictedBranch) {
-      this->pc = this->predictedPC;
+      this->pc = this->dReg.predictedPC;
     }
 
     this->history.cycleCount++;
@@ -658,14 +658,13 @@ void Simulator::decode() {
 
   bool predictedBranch = false;
   if (isBranch(insttype)) {
-    predictedBranch = this->branchPredictor->predict(this->fReg.pc, insttype,
-                                                     op1, op2, offset);
+    predictedBranch = this->branchPredictor->predict(this->fReg.pc, insttype, op1, op2, offset);
     if (predictedBranch) {
-      this->predictedPC = this->fReg.pc + offset;
-      this->anotherPC = this->fReg.pc + 4;
+      this->dRegNew.predictedPC = this->fReg.pc + offset;
+      this->dRegNew.anotherPC = this->fReg.pc + 4;
       this->fRegNew.bubble = true;
     } else {
-      this->anotherPC = this->fReg.pc + offset;
+      this->dRegNew.anotherPC = this->fReg.pc + offset;
     }
   }
 
@@ -942,7 +941,7 @@ void Simulator::excecute() {
       this->history.predictedBranch++;
     } else {
       // Control Hazard Here
-      this->pc = this->anotherPC;
+      this->pc = this->dReg.anotherPC;
       this->fRegNew.bubble = true;
       this->dRegNew.bubble = true;
       this->history.unpredictedBranch++;
